@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>CalcBoyShooter — Calculate fast. Draw faster.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Roboto+Slab:wght@400;600;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --sky-top:#3a2a44; --sky-mid:#c4562e; --sky-low:#e8935b;
+  --ground:#8a5636; --ground-dark:#5a3620;
+  --wood:#6b4226; --wood-dark:#4a2d18; --wood-light:#8a5a36;
+  --paper:#eddcb0; --paper-dark:#d9c493;
+  --ink:#2b1c14; --ink-soft:#5a4632;
+  --accent:#c4562e; --accent-bright:#e8935b;
+  --gold:#d4a24c; --gold-bright:#f0c869;
+  --danger:#a3312a; --danger-bright:#d94b3f;
+  --success:#5a8c3e;
+  --shadow: 0 6px 0 rgba(0,0,0,.35);
+  --radius: 6px;
+  --motion: 1;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:#1a1108;overflow:hidden;}
+body{
+  font-family:'Inter',sans-serif;color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+#app{
+  position:relative;width:100vw;height:100vh;height:100dvh;
+  overflow:hidden;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 45%, var(--sky-low) 62%, var(--ground) 63%, var(--ground-dark) 100%);
+  display:flex;flex-direction:column;
+  transition:background .6s ease;
+}
+.sun{
+  position:absolute;left:50%;top:30%;width:120px;height:120px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%, var(--gold-bright), var(--accent) 70%);
+  transform:translate(-50%,-50%);box-shadow:0 0 60px 10px rgba(240,200,105,.35);
+  opacity:.9;pointer-events:none;
+}
+.mtn{position:absolute;bottom:37%;width:100%;height:120px;pointer-events:none;opacity:.55;}
+.mtn svg{width:100%;height:100%;display:block;}
+.dust{position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(ellipse at 20% 90%, rgba(0,0,0,.15), transparent 60%),
+  radial-gradient(ellipse at 80% 92%, rgba(0,0,0,.12), transparent 55%);}
+.cactus{position:absolute;bottom:38%;width:34px;height:70px;opacity:.85;pointer-events:none;}
+.cactus::before,.cactus::after{content:'';position:absolute;background:#4d6b3a;border-radius:10px;}
+.cactus::before{left:0;top:0;width:16px;height:70px;border-radius:10px 10px 4px 4px;}
+.cactus::after{left:-10px;top:20px;width:10px;height:30px;border-radius:8px;}
+
+#screen{position:relative;flex:1;display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;z-index:2;}
+#screen::-webkit-scrollbar{width:8px;}
+#screen::-webkit-scrollbar-thumb{background:rgba(0,0,0,.3);border-radius:4px;}
+
+h1,h2,h3,.display{font-family:'Rye',cursive;color:var(--paper);text-shadow:0 3px 0 rgba(0,0,0,.4);letter-spacing:.5px;}
+.num{font-family:'Roboto Slab',serif;font-weight:800;}
+
+.wrap{max-width:920px;width:100%;margin:0 auto;padding:22px 18px 40px;position:relative;z-index:3;}
+
+.title-hero{text-align:center;padding-top:6vh;}
+.title-hero h1{font-size:clamp(38px,9vw,74px);margin:0;color:var(--gold-bright);
+  -webkit-text-stroke:2px var(--ink);text-shadow:4px 5px 0 rgba(0,0,0,.45);}
+.title-hero .tagline{color:var(--paper);font-style:italic;font-size:15px;margin-top:6px;opacity:.9;font-family:'Roboto Slab',serif;}
+.sixgun-divider{width:120px;height:3px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:18px auto;}
+
+.menu-list{display:flex;flex-direction:column;gap:12px;max-width:340px;margin:34px auto 0;}
+
+.btn{
+  font-family:'Roboto Slab',serif;font-weight:600;font-size:16px;letter-spacing:.3px;
+  background:linear-gradient(180deg,var(--wood-light),var(--wood));color:var(--paper);
+  border:2px solid var(--wood-dark);border-radius:var(--radius);
+  padding:13px 18px;cursor:pointer;box-shadow:var(--shadow);
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,.35);}
+.btn:hover{filter:brightness(1.08);}
+.btn.primary{background:linear-gradient(180deg,var(--accent-bright),var(--accent));border-color:#7a2f18;}
+.btn.gold{background:linear-gradient(180deg,var(--gold-bright),var(--gold));border-color:#8a6423;color:#3a2a10;}
+.btn.danger{background:linear-gradient(180deg,var(--danger-bright),var(--danger));border-color:#5c1a15;}
+.btn.ghost{background:rgba(20,12,8,.35);border-color:rgba(255,255,255,.25);}
+.btn.sm{padding:8px 14px;font-size:13px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none;}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;position:relative;z-index:5;}
+.topbar .backbtn{font-size:14px;}
+.hud-pill{background:rgba(20,12,8,.55);border:1px solid rgba(255,255,255,.2);border-radius:20px;
+  padding:6px 14px;color:var(--paper);font-family:'Roboto Slab',serif;font-weight:600;font-size:14px;display:flex;align-items:center;gap:6px;}
+
+.panel{background:linear-gradient(180deg,var(--paper),var(--paper-dark));border:3px solid var(--wood-dark);
+  border-radius:8px;padding:18px;box-shadow:0 8px 18px rgba(0,0,0,.35);color:var(--ink);}
+.panel h2,.panel h3{color:var(--ink);text-shadow:none;}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;}
+@media (max-width:540px){.grid5{grid-template-columns:repeat(3,1fr);}}
+
+.stage-card{background:linear-gradient(180deg,var(--paper),var(--paper-dark));border:3px solid var(--wood-dark);
+  border-radius:8px;padding:14px;cursor:pointer;position:relative;overflow:hidden;transition:transform .12s;box-shadow:var(--shadow);}
+.stage-card:hover{transform:translateY(-3px);}
+.stage-card.locked{filter:grayscale(.85) brightness(.7);cursor:not-allowed;}
+.stage-card .swatch{height:52px;border-radius:5px;margin-bottom:8px;border:1px solid rgba(0,0,0,.25);}
+.stage-card h3{font-size:19px;margin:2px 0 4px;color:var(--ink);text-shadow:none;}
+.stage-card .meta{font-size:12px;color:var(--ink-soft);line-height:1.4;}
+.stage-card .bar{height:7px;background:rgba(0,0,0,.15);border-radius:4px;margin-top:8px;overflow:hidden;}
+.stage-card .bar>div{height:100%;background:var(--success);}
+.lock-badge{position:absolute;top:8px;right:8px;font-size:18px;}
+
+.level-node{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:'Roboto Slab',serif;font-weight:800;font-size:18px;cursor:pointer;position:relative;
+  background:linear-gradient(180deg,var(--wood-light),var(--wood));color:var(--paper);border:3px solid var(--wood-dark);
+  box-shadow:var(--shadow);transition:transform .1s;}
+.level-node:hover{transform:scale(1.06);}
+.level-node.locked{background:#5a5248;cursor:not-allowed;opacity:.55;}
+.level-node.completed{background:linear-gradient(180deg,var(--success),#3a5c28);}
+.level-node.perfect{background:linear-gradient(180deg,var(--gold-bright),var(--gold));color:#3a2a10;}
+.level-node.boss{background:linear-gradient(180deg,var(--danger-bright),var(--danger));border-color:#4a120e;width:74px;height:74px;font-size:22px;}
+.level-node .star{position:absolute;top:-8px;right:-4px;font-size:15px;}
+
+/* GAMEPLAY */
+#gamewrap{display:flex;flex-direction:column;height:100%;position:relative;}
+.hud{display:flex;justify-content:space-between;align-items:flex-start;padding:12px 16px;position:relative;z-index:6;}
+.hud .lives{display:flex;gap:4px;font-size:20px;}
+.hud .center-hud{text-align:center;}
+.hud .center-hud .stagelvl{font-family:'Rye',cursive;color:var(--gold-bright);font-size:16px;text-shadow:2px 2px 0 rgba(0,0,0,.4);}
+.hud .right-hud{text-align:right;}
+.streak-badge{font-family:'Roboto Slab',serif;font-weight:800;color:var(--gold-bright);font-size:15px;text-shadow:1px 1px 0 rgba(0,0,0,.4);}
+
+.queue-strip{display:flex;gap:6px;justify-content:center;padding:4px 10px 0;flex-wrap:wrap;}
+.queue-dot{width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.35);border:2px solid rgba(255,255,255,.35);
+  display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--paper);}
+.queue-dot.done{background:var(--success);border-color:#2f4d20;}
+.queue-dot.current{background:var(--gold-bright);border-color:#8a6423;color:#3a2a10;transform:scale(1.2);}
+.queue-dot.boss{background:var(--danger);}
+
+.duel-stage{flex:1;position:relative;display:flex;align-items:flex-end;justify-content:space-between;padding:0 6% 4%;min-height:200px;}
+.cowboy{width:100px;height:150px;position:relative;transition:transform .18s ease;}
+.cowboy .hat{position:absolute;top:0;left:50%;transform:translateX(-50%);width:74px;height:26px;}
+.cowboy .hat::before{content:'';position:absolute;left:0;top:14px;width:100%;height:12px;background:var(--hatcolor,#3a2a1e);border-radius:50%/8px;box-shadow:0 3px 0 rgba(0,0,0,.25) inset;}
+.cowboy .hat::after{content:'';position:absolute;left:22px;top:0;width:30px;height:20px;border-radius:8px 8px 0 0;
+  background:linear-gradient(to bottom, var(--hatcolor,#3a2a1e) 0%, var(--hatcolor,#3a2a1e) 62%, var(--accentcolor,#d4a24c) 62%, var(--accentcolor,#d4a24c) 76%, var(--hatcolor,#3a2a1e) 76%, var(--hatcolor,#3a2a1e) 100%);}
+.cowboy .head{position:absolute;top:20px;left:50%;transform:translateX(-50%);width:30px;height:30px;border-radius:50%;background:var(--skintone,#d9a066);box-shadow:0 3px 4px rgba(0,0,0,.18) inset;overflow:visible;}
+.cowboy .sideburn{position:absolute;top:1px;width:4px;height:11px;background:var(--haircolor,#2a1a10);border-radius:2px;opacity:.9;}
+.cowboy .sideburn.l{left:-1px;} .cowboy .sideburn.r{right:-1px;}
+.cowboy .brow{position:absolute;width:8px;height:2.4px;background:var(--haircolor,#2a1a10);border-radius:2px;top:8px;}
+.cowboy .brow.l{left:3px;transform:rotate(14deg);} .cowboy .brow.r{right:3px;transform:rotate(-14deg);}
+.cowboy .eye{position:absolute;width:5px;height:5px;background:#1c140f;border-radius:50%;top:12.5px;}
+.cowboy .eye.l{left:5px;} .cowboy .eye.r{right:5px;}
+.cowboy .eye .glint{position:absolute;width:1.6px;height:1.6px;background:#fff;border-radius:50%;top:0.6px;left:0.6px;opacity:.9;}
+.cowboy .nose{position:absolute;left:50%;top:16px;transform:translateX(-50%);width:3px;height:5px;background:rgba(0,0,0,.12);border-radius:0 0 3px 3px;}
+.cowboy .mustache{position:absolute;left:50%;top:19px;transform:translateX(-50%);width:16px;height:4px;background:var(--haircolor,#2a1a10);border-radius:2px;}
+.cowboy .mustache::before,.cowboy .mustache::after{content:'';position:absolute;top:1.5px;width:5px;height:5px;background:var(--haircolor,#2a1a10);border-radius:50%;}
+.cowboy .mustache::before{left:-3px;} .cowboy .mustache::after{right:-3px;}
+.cowboy .mustache.thin{width:11px;height:2.5px;}
+.cowboy .mustache.thin::before,.cowboy .mustache.thin::after{width:3px;height:3px;}
+.cowboy .goatee{position:absolute;left:50%;top:24px;transform:translateX(-50%);width:9px;height:6px;background:var(--haircolor,#2a1a10);border-radius:0 0 5px 5px;z-index:1;}
+.cowboy .beard{position:absolute;left:50%;top:20px;transform:translateX(-50%);width:23px;height:12px;background:var(--haircolor,#2a1a10);border-radius:3px 3px 9px 9px;opacity:.96;z-index:1;}
+.cowboy .mouth{position:absolute;left:50%;top:24px;transform:translateX(-50%);width:7px;height:1.5px;background:#4a241c;border-radius:1px;opacity:.6;z-index:2;}
+.cowboy .sunglasses{position:absolute;left:50%;top:11.5px;transform:translateX(-50%);width:22px;height:6px;background:#111;border-radius:3px;z-index:3;}
+.cowboy .sunglasses::before{content:'';position:absolute;left:9px;top:1.5px;width:4px;height:3px;background:#333;}
+.cowboy .eyepatch{position:absolute;left:4px;top:11.5px;width:7px;height:7px;background:#0c0c0c;border-radius:50%;z-index:3;}
+.cowboy .patchstrap{position:absolute;left:0;top:13px;width:100%;height:2px;background:#0c0c0c;opacity:.85;z-index:3;}
+.cowboy .monocle{position:absolute;right:4.5px;top:11.5px;width:8px;height:8px;border:1.5px solid var(--accentcolor,#f0c869);border-radius:50%;z-index:3;box-shadow:0 0 2px rgba(255,255,255,.5) inset;}
+.cowboy .cigar{position:absolute;left:19px;top:24.5px;width:8px;height:2.6px;background:#6b4a2a;border-radius:0 2px 2px 0;z-index:3;}
+.cowboy .cigar::after{content:'';position:absolute;right:-2px;top:0.4px;width:2px;height:1.8px;background:#e8935b;border-radius:50%;}
+.cowboy .goldtooth{position:absolute;left:50%;top:24.5px;transform:translateX(-1.5px);width:2.2px;height:2.8px;background:#f0c869;z-index:3;border-radius:0.5px;}
+.cowboy .scar{position:absolute;left:6.5px;top:8px;width:2px;height:14px;background:rgba(163,49,42,.55);transform:rotate(16deg);border-radius:2px;z-index:3;}
+.cowboy .hatcharm{position:absolute;left:29px;top:5px;font-size:11px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));z-index:2;}
+.cowboy .hatcharm.feather{left:auto;right:6px;top:-9px;font-size:14px;transform:rotate(18deg);}
+.cowboy .neck{position:absolute;top:44px;left:50%;transform:translateX(-50%);}
+.cowboy .neck.bandana{width:16px;height:9px;background:var(--accentcolor,#d4a24c);clip-path:polygon(50% 100%, 0 0, 100% 0);opacity:.92;}
+.cowboy .neck.stringtie{width:3px;height:16px;background:#1c1310;border-radius:2px;}
+.cowboy .neck.stringtie .tieknot{position:absolute;left:50%;top:-2px;transform:translateX(-50%);width:8px;height:8px;background:var(--accentcolor,#d4a24c);border-radius:50%;border:1px solid rgba(0,0,0,.35);}
+.cowboy .neck.badge{width:12px;height:12px;font-size:10px;line-height:12px;text-align:center;color:#e0c04a;text-shadow:0 1px 0 rgba(0,0,0,.5);}
+.cowboy .neck.goldchain{width:20px;height:6px;border:2px dashed var(--accentcolor,#f0c869);border-top:none;border-radius:0 0 10px 10px;opacity:.85;}
+.cowboy .body{position:absolute;top:48px;left:50%;transform:translateX(-50%);width:52px;height:66px;border-radius:10px 10px 4px 4px;background:var(--bodycolor,#5a3826);box-shadow:0 4px 8px rgba(0,0,0,.15) inset;}
+.cowboy .body::after{content:'';position:absolute;left:50%;top:24%;transform:translateX(-50%);width:14px;height:14px;border-radius:50%;background:var(--accentcolor,#d4a24c);border:2px solid rgba(0,0,0,.3);}
+.cowboy .belt{position:absolute;left:0;bottom:8px;width:100%;height:6px;background:rgba(0,0,0,.35);}
+.cowboy .belt .buckle{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:9px;height:7px;background:var(--accentcolor,#d4a24c);border-radius:2px;border:1px solid rgba(0,0,0,.4);}
+.cowboy .legs{position:absolute;top:108px;left:50%;transform:translateX(-50%);width:44px;height:40px;background:var(--legcolor,#3a2a1e);border-radius:0 0 6px 6px;}
+.cowboy .boot{position:absolute;bottom:-4px;width:16px;height:9px;background:#1c130d;border-radius:3px;}
+.cowboy .boot.l{left:1px;} .cowboy .boot.r{right:1px;}
+.cowboy .arm{position:absolute;top:56px;width:34px;height:9px;background:var(--bodycolor,#5a3826);border-radius:5px;transform-origin:left center;transition:transform .12s;}
+.cowboy.left .arm{left:66px;transform-origin:left center;}
+.cowboy.right{transform-origin:center;}
+.cowboy.right .arm{right:66px;transform-origin:right center;left:auto;}
+.cowboy.right .body,.cowboy.right .head,.cowboy.right .legs,.cowboy.right .hat{}
+.cowboy.right{}
+.cowboy.left{}
+.cowboy.hit{animation:hitshake .35s;}
+.cowboy.draw .arm{transform:rotate(-70deg);}
+.cowboy.right.draw .arm{transform:rotate(70deg);}
+.cowboy.fall{animation:fallover .5s forwards;}
+@keyframes fallover{to{transform:rotate(85deg) translateY(10px);opacity:.3;}}
+@keyframes hitshake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.muzzle{position:absolute;width:22px;height:22px;border-radius:50%;background:radial-gradient(circle,#fff6cf,var(--gold-bright) 55%,transparent 75%);
+  opacity:0;pointer-events:none;}
+.muzzle.flash{animation:mflash .22s ease-out;}
+@keyframes mflash{0%{opacity:1;transform:scale(.4);}100%{opacity:0;transform:scale(1.8);}}
+.bulletline{position:absolute;top:64px;height:2px;background:rgba(255,240,200,.9);opacity:0;}
+.bulletline.fire{animation:btravel .12s linear;}
+@keyframes btravel{0%{opacity:1;}100%{opacity:0;}}
+
+.reticle{position:absolute;width:44px;height:44px;border:3px solid var(--danger-bright);border-radius:50%;
+  pointer-events:none;display:none;}
+.reticle::before,.reticle::after{content:'';position:absolute;background:var(--danger-bright);}
+.reticle::before{left:50%;top:-8px;width:2px;height:8px;transform:translateX(-1px);}
+.reticle::after{left:-8px;top:50%;width:8px;height:2px;transform:translateY(-1px);}
+
+.enemy-tag{position:absolute;bottom:0;left:50%;transform:translateX(-50%);white-space:nowrap;
+  font-family:'Roboto Slab',serif;font-weight:700;font-size:12px;background:rgba(20,12,8,.6);
+  color:var(--paper);padding:3px 9px;border-radius:10px;top:-22px;}
+.hp-row{position:absolute;top:-40px;left:50%;transform:translateX(-50%);display:flex;gap:3px;}
+.hp-pip{width:10px;height:10px;border-radius:50%;background:var(--danger);border:1px solid rgba(0,0,0,.4);}
+.hp-pip.lost{background:rgba(0,0,0,.25);}
+
+.qbox{margin:0 auto;max-width:560px;width:92%;background:linear-gradient(180deg,var(--paper),var(--paper-dark));
+  border:3px solid var(--wood-dark);border-radius:10px;padding:18px 20px;text-align:center;box-shadow:0 10px 20px rgba(0,0,0,.35);
+  position:relative;z-index:6;}
+.qbox .qtext{font-family:'Roboto Slab',serif;font-weight:700;font-size:clamp(19px,4vw,27px);color:var(--ink);margin-bottom:12px;line-height:1.3;}
+.qbox .swap-flash{color:var(--danger);font-size:12px;font-weight:700;margin-bottom:4px;display:none;}
+.timerbar{height:10px;border-radius:6px;background:rgba(0,0,0,.15);overflow:hidden;margin-bottom:14px;}
+.timerbar>div{height:100%;background:var(--success);transition:width .1s linear, background .3s;}
+.answer-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.answer-row input{font-family:'Roboto Slab',serif;font-size:22px;font-weight:700;text-align:center;
+  width:150px;padding:10px;border:2px solid var(--wood);border-radius:6px;background:#fffaf0;color:var(--ink);}
+.answer-row input:focus{outline:2px solid var(--accent);}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:400px;margin:0 auto;}
+.mc-btn{font-family:'Roboto Slab',serif;font-weight:700;font-size:18px;padding:12px;border-radius:6px;
+  border:2px solid var(--wood-dark);background:var(--paper);cursor:pointer;}
+.mc-btn:hover{background:var(--gold-bright);}
+.mc-btn.correct{background:var(--success);color:#fff;}
+.mc-btn.wrong{background:var(--danger);color:#fff;}
+
+.feedback-flash{position:fixed;inset:0;pointer-events:none;z-index:20;opacity:0;}
+.feedback-flash.good{background:radial-gradient(circle,rgba(90,140,62,.25),transparent 70%);animation:flashfade .5s;}
+.feedback-flash.bad{background:radial-gradient(circle,rgba(163,49,42,.35),transparent 70%);animation:flashfade .5s;}
+@keyframes flashfade{0%{opacity:1;}100%{opacity:0;}}
+
+.shake{animation:screenshake .35s;}
+@keyframes screenshake{0%,100%{transform:translate(0,0);}20%{transform:translate(-6px,3px);}40%{transform:translate(6px,-3px);}60%{transform:translate(-4px,2px);}80%{transform:translate(4px,-2px);}}
+
+.streak-pop{position:fixed;top:22%;left:50%;transform:translate(-50%,-50%) scale(.6);z-index:25;pointer-events:none;
+  font-family:'Rye',cursive;font-size:34px;color:var(--gold-bright);text-shadow:0 0 12px rgba(255,180,60,.7),2px 3px 0 rgba(0,0,0,.5);
+  opacity:0;animation:streakpop .9s ease-out forwards;}
+@keyframes streakpop{0%{opacity:0;transform:translate(-50%,-40%) scale(.5);}20%{opacity:1;transform:translate(-50%,-50%) scale(1.15);}70%{opacity:1;}100%{opacity:0;transform:translate(-50%,-65%) scale(1);}}
+
+.coin-pop{position:fixed;z-index:25;pointer-events:none;font-family:'Roboto Slab',serif;font-weight:800;color:var(--gold-bright);
+  text-shadow:1px 2px 0 rgba(0,0,0,.5);animation:coinrise 1s ease-out forwards;}
+@keyframes coinrise{0%{opacity:1;transform:translateY(0);}100%{opacity:0;transform:translateY(-50px);}}
+
+/* boss intro */
+.boss-intro{position:fixed;inset:0;background:rgba(6,3,2,.92);z-index:40;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;padding:20px;animation:fadein .4s;}
+@keyframes fadein{from{opacity:0;}to{opacity:1;}}
+.boss-intro h2{font-size:clamp(30px,8vw,54px);color:var(--danger-bright);text-shadow:0 0 20px rgba(200,60,40,.6),3px 4px 0 rgba(0,0,0,.6);
+  animation:bossenter .6s ease-out;}
+@keyframes bossenter{from{opacity:0;transform:translateY(-30px) scale(.8);}to{opacity:1;transform:translateY(0) scale(1);}}
+.boss-intro .quote{font-style:italic;color:var(--paper);font-family:'Roboto Slab',serif;max-width:480px;margin:16px auto 26px;font-size:16px;}
+.boss-intro .cowboy{transform:scale(1.4);margin-bottom:10px;}
+
+/* results */
+.results-card{max-width:460px;margin:6vh auto;}
+.stat-line{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(0,0,0,.15);font-family:'Roboto Slab',serif;font-size:14px;}
+.stat-line b{font-weight:800;}
+
+.gun-card{border:3px solid var(--wood-dark);border-radius:8px;padding:14px;text-align:center;background:linear-gradient(180deg,var(--paper),var(--paper-dark));position:relative;}
+.gun-card.locked{filter:grayscale(1) brightness(.65);}
+.gun-icon{font-size:38px;margin-bottom:6px;}
+.gun-plaque{position:relative;border-radius:6px;padding:10px 0 4px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.15);}
+.gun-emblem{position:absolute;top:4px;right:8px;font-size:16px;text-shadow:0 1px 0 rgba(0,0,0,.4);}
+.gun-hold{position:absolute;top:-13px;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));transition:transform .12s ease;z-index:5;}
+.cowboy.left .gun-hold{right:-16px;}
+.cowboy.right .gun-hold{left:-16px;}
+.cowboy.right .gun-hold svg{transform:scaleX(-1);}
+.cowboy.draw .gun-hold{transform:scale(1.28) translateY(-2px);}
+.cowboy.right.draw .gun-hold{transform:scaleX(-1.28) scaleY(1.28) translateY(-2px);}
+.gun-card h3{color:var(--ink);text-shadow:none;font-size:16px;margin:4px 0;}
+.gun-card p{font-size:12px;color:var(--ink-soft);margin:0 0 8px;}
+.gun-card.equipped{outline:3px solid var(--gold);}
+
+.skin-card{border:3px solid var(--wood-dark);border-radius:8px;padding:12px;text-align:center;background:linear-gradient(180deg,var(--paper),var(--paper-dark));}
+.skin-swatch{width:100%;height:70px;border-radius:6px;margin-bottom:8px;position:relative;overflow:hidden;}
+.skin-card h3{font-size:14px;color:var(--ink);text-shadow:none;margin:4px 0;}
+.skin-card.equipped{outline:3px solid var(--gold);}
+
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.1);}
+.settings-row label{font-family:'Roboto Slab',serif;font-weight:600;font-size:14px;}
+input[type=range]{width:150px;accent-color:var(--accent);}
+.toggle{position:relative;width:46px;height:24px;background:#bbb;border-radius:14px;cursor:pointer;transition:background .2s;}
+.toggle.on{background:var(--success);}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;}
+.toggle.on::after{left:24px;}
+
+.small-note{font-size:12px;color:var(--paper);opacity:.85;text-align:center;margin-top:14px;}
+.empty-note{text-align:center;color:var(--paper);opacity:.8;padding:30px;}
+
+::selection{background:var(--gold);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="sun"></div>
+  <div class="mtn"><svg viewBox="0 0 800 100" preserveAspectRatio="none"><polygon points="0,100 0,60 100,20 200,55 320,10 430,50 540,25 650,60 760,30 800,55 800,100" fill="#4a2d18"/></svg></div>
+  <div class="dust"></div>
+  <div id="screen"></div>
+  <div id="fxLayer"></div>
+</div>
+
+<script>
+/* ===================== UTILITIES ===================== */
+const $ = sel => document.querySelector(sel);
+const rand = (min,max) => Math.floor(Math.random()*(max-min+1))+min;
+const randFloat = (min,max,d=1) => { const v = Math.random()*(max-min)+min; const p=Math.pow(10,d); return Math.round(v*p)/p; };
+const choice = arr => arr[rand(0,arr.length-1)];
+const shuffle = arr => { const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=rand(0,i);[a[i],a[j]]=[a[j],a[i]];} return a; };
+const clamp = (v,min,max) => Math.max(min,Math.min(max,v));
+const fmt = n => { if(Math.abs(n-Math.round(n))<0.0001) return String(Math.round(n)); return (Math.round(n*100)/100).toString(); };
+const NAME_POOL = ['Dusty Dan','One-Eyed Pete','Slim Jim','Mad Dog Miller','Rattlesnake Joe','Billy the Quick','Doc Hollow',
+  'Iron Nose Ned','Coyote Kate','Buckshot Betty','Silver Tongue Sal','Boone Colter','Grimy Gus','Copper Carl','Wild Ridge Ray',
+  'Nettle Nora','Two-Step Tex','Prairie Pearl','Sundown Sam','Hollow Point Hank','Chalky Charlie','Rustler Rose','Bent Nail Ben','Tumbleweed Tom'];
+
+/* ===================== CONFIG ===================== */
+const STAGES = [
+ {name:'Dusty Town', focus:'Addition, subtraction, multiplication & division', sky:['#5a4a5e','#d97a4a','#f0c877'], boss:'Rookie Outlaw', quote:"M-my hands are shakin', but I ain't backin' down, partner!", gun:{id:'peacemaker',name:'Peacemaker',icon:'🔫',desc:'A balanced starting iron. Reliable, no frills.'}},
+ {name:'Cactus Valley', focus:'Larger arithmetic & order of operations', sky:['#4a3a52','#d2723f','#eec06a'], boss:'Cactus Jack', quote:"Ha! You call that math? Watch THIS, kid!", gun:{id:'timekeeper',name:'Timekeeper',icon:'⏱️',desc:'Adds a few extra seconds to every countdown.'}},
+ {name:'Gold Mine', focus:'Fractions, decimals & percentages', sky:['#463047','#c9683a','#e6b45f'], boss:'The Gambler', quote:"Odds are... you're gonna lose. Care to bet on it?", gun:{id:'luckysix',name:'Lucky Six',icon:'🍀',desc:'Forgives your first mistake each level.'}},
+ {name:'Outlaw Territory', focus:'Ratios, proportions, rates & word problems', sky:['#402c46','#c05f38','#e0a758'], boss:'Red-Eye', quote:"I don't wait for no one. Draw quick or don't draw at all.", gun:{id:'secondchance',name:'Second Chance',icon:'❤️',desc:'Grants one extra heart (2 lives) every level.'}},
+ {name:'Deadwood', focus:'Powers, roots, negatives & order of operations', sky:['#3a2a44','#b5573a','#d99f56'], boss:'The Sheriff', quote:"Law's comin' for ya, son. And the law don't miss.", gun:{id:'quickdraw',name:'Quickdraw',icon:'⚡',desc:'Speeds up your aim-and-fire sequence.'}},
+ {name:'Snake River', focus:'Introductory algebra & one/two-step equations', sky:['#352a40','#a8543a','#cf9752'], boss:'Snake', quote:"Ssss... you never know which way I'll strike.", gun:{id:'deadeye',name:'Dead Eye',icon:'👁️',desc:'Slows the timer briefly, once per level.'}},
+ {name:'Bandit Country', focus:'Linear equations, inequalities & sequences', sky:['#302038','#9c4f3c','#c68e4e'], boss:'Black Hat', quote:"Let's see if you can calculate faster than you can draw.", gun:{id:'gambler',name:'Gambler',icon:'🎲',desc:'Sometimes forgives a wrong answer entirely.'}},
+ {name:'High Noon', focus:'Geometry — angles, perimeter, area & volume', sky:['#2c1c38','#973f2f','#e0a758'], boss:'Deadshot', quote:"A legend don't need luck, kid. Just aim.", gun:{id:'sheriffgun',name:'Sheriff',icon:'⭐',desc:'Boosts every coin reward you earn.'}},
+ {name:'The Frontier', focus:'Mixed, multi-step mathematics', sky:['#28182f','#8a3a30','#c88f4e'], boss:'The Stranger', quote:"You don't know what's comin'. Honestly? Neither do I.", gun:{id:'outlawgun',name:'Outlaw',icon:'🌵',desc:'Multiplies the rewards from long streaks.'}},
+ {name:'The Final Frontier', focus:'Advanced mixed mathematics & complex reasoning', sky:['#241730','#7a3038','#c4562e'], boss:'The Final Gunslinger', quote:"Every gunslinger before me was a warm-up. Show me what you've got.", gun:{id:'legend',name:'Legend',icon:'👑',desc:'A little of everything, all at once.'}}
+];
+const GUNS = STAGES.map(s=>s.gun);
+const GUN_VISUALS = {
+  peacemaker:  {frame:'#9aa0a6', grip:'#5a3826', accent:'#e6e9ec', emblem:'★'},
+  timekeeper:  {frame:'#4a6b8a', grip:'#22303d', accent:'#eec06a', emblem:'⏱'},
+  luckysix:    {frame:'#3a7a3a', grip:'#20361c', accent:'#8be06a', emblem:'☘'},
+  secondchance:{frame:'#8a2e2e', grip:'#3a1210', accent:'#ff9d94', emblem:'♥'},
+  quickdraw:   {frame:'#c9a227', grip:'#3a2a10', accent:'#fff6cf', emblem:'⚡'},
+  deadeye:     {frame:'#2a2a2a', grip:'#0c0c0c', accent:'#4be0e0', emblem:'◉'},
+  gambler:     {frame:'#6a3480', grip:'#2c1636', accent:'#e0a758', emblem:'♦'},
+  sheriffgun:  {frame:'#9a7a2e', grip:'#3a2c0c', accent:'#ffd75e', emblem:'⭐'},
+  outlawgun:   {frame:'#6b241c', grip:'#280d0a', accent:'#e8935b', emblem:'☠'},
+  legend:      {frame:'#b8871f', grip:'#4a1010', accent:'#ffe27a', emblem:'♛'},
+  bandit:      {frame:'#5a5148', grip:'#2a241c', accent:'#8a8070', emblem:''}
+};
+function gunSVG(gunId, w, h){
+  const v = GUN_VISUALS[gunId] || GUN_VISUALS.peacemaker;
+  w = w||64; h = h||40;
+  const oc = '#161010'; // outline color for contrast
+  return `<svg viewBox="0 0 110 64" width="${w}" height="${h}" style="overflow:visible;">
+    <path d="M12 27 L4 15 L12 12 L20 24 Z" fill="${v.frame}" stroke="${oc}" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="18" y="22" width="60" height="10" rx="3" fill="${v.frame}" stroke="${oc}" stroke-width="2"/>
+    <circle cx="47" cy="27" r="10" fill="${v.frame}" stroke="${v.accent}" stroke-width="2.5"/>
+    <circle cx="47" cy="27" r="10" fill="none" stroke="${oc}" stroke-width="1.5"/>
+    <circle cx="47" cy="27" r="3.5" fill="${v.accent}"/>
+    <path d="M28 33 q7 13 17 13 q11 0 15-11" fill="none" stroke="${v.frame}" stroke-width="5" stroke-linecap="round"/>
+    <path d="M28 33 q7 13 17 13 q11 0 15-11" fill="none" stroke="${oc}" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+    <path d="M36 32 L31 58 L52 58 L49 32 Z" fill="${v.grip}" stroke="${oc}" stroke-width="2" stroke-linejoin="round"/>
+    <rect x="36" y="36" width="13" height="3" fill="${v.accent}" opacity=".7"/>
+    <rect x="35" y="43" width="15" height="3" fill="${v.accent}" opacity=".5"/>
+  </svg>`;
+}
+function gunEmblem(gunId){ const v=GUN_VISUALS[gunId]||{}; return v.emblem||''; }
+const SKINS = [
+  {id:'classic', name:'Classic Cowboy', price:0, hat:'#3a2a1e', body:'#5a3826', leg:'#2e2117', accent:'#d4a24c', skin:'#d9a066', hair:'#3a2418'},
+  {id:'sheriff', name:'Sheriff', price:150, hat:'#20242e', body:'#2e3a4d', leg:'#1a2028', accent:'#f0c869', skin:'#d9a066', hair:'#241812'},
+  {id:'blackhat', name:'Black Hat', price:250, hat:'#111111', body:'#1c1c1c', leg:'#0c0c0c', accent:'#a3312a', skin:'#c48a5a', hair:'#100c0a'},
+  {id:'redbandit', name:'Red Bandit', price:300, hat:'#5a1f1a', body:'#7a2a20', leg:'#3a1410', accent:'#e8935b', skin:'#c48a5a', hair:'#2e1c14'},
+  {id:'desert', name:'Desert Wanderer', price:350, hat:'#8a6a3a', body:'#c9a26a', leg:'#6a4e2a', accent:'#5a8c3e', skin:'#e0b482', hair:'#8a6a3a'},
+  {id:'golden', name:'Golden Cowboy', price:600, hat:'#a87d20', body:'#f0c869', leg:'#8a6423', accent:'#fff6cf', skin:'#d9a066', hair:'#c9a227'},
+  {id:'ghost', name:'Ghost Cowboy', price:700, hat:'#3a4a52', body:'#c8d6db', leg:'#7a8a90', accent:'#eaf6ff', skin:'#dfe9ec', hair:'#cfd9dc'},
+  {id:'future', name:'Future Cowboy', price:800, hat:'#1a2a3a', body:'#2f5a6b', leg:'#132029', accent:'#4be0e0', skin:'#d9a066', hair:'#1c2c38'},
+  {id:'legendary', name:'Legendary Gunslinger', price:1200, hat:'#4a1010', body:'#8a1a1a', leg:'#2a0a0a', accent:'#ffd75e', skin:'#d9a066', hair:'#1c0a0a'}
+];
+const HEARTS_BASE = 3;
+const HP_PER_HEART = 2;
+function heartsHTML(hp, maxHp){
+  const heartCount = Math.ceil(maxHp/HP_PER_HEART);
+  let html='';
+  for(let i=0;i<heartCount;i++){
+    const heartHp = clamp(hp - i*HP_PER_HEART, 0, HP_PER_HEART);
+    if(heartHp>=2) html+='❤️';
+    else if(heartHp===1) html+='💔';
+    else html+='🖤';
+  }
+  return html;
+}
+
+const ACCESSORY_SLOTS = [
+  {id:'facialhair', label:'Facial Hair'},
+  {id:'eyewear', label:'Eyewear'},
+  {id:'neckwear', label:'Neckwear'},
+  {id:'hatcharm', label:'Hat Charm'},
+  {id:'extra', label:'Extras'}
+];
+const ACCESSORIES = [
+  {id:'mustache-classic', slot:'facialhair', name:'Classic Mustache', price:0, icon:'👨'},
+  {id:'goatee', slot:'facialhair', name:'Goatee', price:150, icon:'🧔'},
+  {id:'full-beard', slot:'facialhair', name:'Full Beard', price:220, icon:'🧔‍♂️'},
+  {id:'clean-shaven', slot:'facialhair', name:'Clean Shaven', price:100, icon:'😐'},
+
+  {id:'none-eyewear', slot:'eyewear', name:'No Eyewear', price:0, icon:'👀'},
+  {id:'sunglasses', slot:'eyewear', name:'Round Shades', price:180, icon:'🕶️'},
+  {id:'eyepatch', slot:'eyewear', name:'Eye Patch', price:220, icon:'🏴'},
+  {id:'monocle', slot:'eyewear', name:'Gold Monocle', price:260, icon:'🧐'},
+
+  {id:'bandana', slot:'neckwear', name:'Trail Bandana', price:0, icon:'🧣'},
+  {id:'stringtie', slot:'neckwear', name:'String Tie', price:140, icon:'🎗️'},
+  {id:'badge', slot:'neckwear', name:'Deputy Badge', price:300, icon:'⭐'},
+  {id:'goldchain', slot:'neckwear', name:'Gold Chain', price:350, icon:'📿'},
+
+  {id:'none-charm', slot:'hatcharm', name:'Plain Band', price:0, icon:'🎩'},
+  {id:'feather', slot:'hatcharm', name:'Eagle Feather', price:160, icon:'🪶'},
+  {id:'starpin', slot:'hatcharm', name:'Silver Star Pin', price:200, icon:'⭐'},
+  {id:'skullpin', slot:'hatcharm', name:'Skull Pin', price:240, icon:'💀'},
+
+  {id:'none-extra', slot:'extra', name:'Nothing Extra', price:0, icon:'✋'},
+  {id:'cigar', slot:'extra', name:'Cigar', price:120, icon:'🚬'},
+  {id:'goldtooth', slot:'extra', name:'Gold Tooth', price:180, icon:'🦷'},
+  {id:'scar', slot:'extra', name:'Battle Scar', price:150, icon:'🩹'}
+];
+const DEFAULT_ACC = {facialhair:'mustache-classic', eyewear:'none-eyewear', neckwear:'bandana', hatcharm:'none-charm', extra:'none-extra'};
+function accById(id){ return ACCESSORIES.find(a=>a.id===id); }
+
+/* ===================== QUESTION GENERATORS ===================== */
+function difficulty(stageIdx, levelIdx){ return ((stageIdx-1)*10 + levelIdx) / 100; } // 0.01 - 1.0
+
+function qNum(text, answer, tol=0){ return {text, answer, tol}; }
+
+function genStage1(lv){
+  const maxN = 8 + lv*4;
+  const op = choice(['+','-','×','÷']);
+  if(op==='+'){ const a=rand(1,maxN), b=rand(1,maxN); return qNum(`${a} + ${b} = ?`, a+b); }
+  if(op==='-'){ const a=rand(2,maxN), b=rand(1,a); return qNum(`${a} − ${b} = ?`, a-b); }
+  if(op==='×'){ const m=Math.min(12,4+lv); const a=rand(1,m), b=rand(1,m); return qNum(`${a} × ${b} = ?`, a*b); }
+  const b=rand(2,Math.min(12,3+lv)), ans=rand(1,Math.min(12,3+lv)); const a=b*ans; return qNum(`${a} ÷ ${b} = ?`, ans);
+}
+function genStage2(lv){
+  const type = choice(['order','twostep','large','multdiv']);
+  const base = 10+lv*3;
+  if(type==='order'){ const a=rand(2,base),b=rand(2,12),c=rand(2,12); return qNum(`${a} + ${b} × ${c} = ?`, a+b*c); }
+  if(type==='twostep'){ const a=rand(2,base),b=rand(2,base),c=rand(2,10); return qNum(`(${a} + ${b}) × ${c} = ?`, (a+b)*c); }
+  if(type==='large'){ const a=rand(50,200+lv*20), b=rand(20,150+lv*15); return Math.random()<0.5? qNum(`${a} + ${b} = ?`,a+b) : qNum(`${a} − ${b} = ?`, Math.max(a,b)-Math.min(a,b)); }
+  const b=rand(2,12), q=rand(2,12), a=b*q, c=rand(2,6); return qNum(`${a} ÷ ${b} × ${c} = ?`, q*c);
+}
+function genStage3(lv){
+  const fracs=[[1,2],[1,4],[3,4],[1,5],[2,5],[1,8],[3,8],[1,10],[3,10],[1,20],[7,20],[1,25],[1,50]];
+  const type = choice(['fracdec','percentof','dectopercent','fracpercent']);
+  if(type==='fracdec'){ const [n,d]=choice(fracs); return {text:`Express ${n}/${d} as a decimal.`, answer: n/d, tol:0.01}; }
+  if(type==='percentof'){ const p=choice([5,10,15,20,25,30,40,50,60,75]); const n=rand(10,60+lv*10); return {text:`What is ${p}% of ${n}?`, answer: n*p/100, tol:0.6}; }
+  if(type==='dectopercent'){ const d=randFloat(0.05,0.95,2); return {text:`Express ${d} as a percentage (just the number).`, answer: Math.round(d*100), tol:0.6}; }
+  const [n,d]=choice(fracs); return {text:`Express ${n}/${d} as a percentage (just the number).`, answer: Math.round(n/d*100), tol:0.6};
+}
+function genStage4(lv){
+  const type = choice(['ratio','rate','proportion','worddisc']);
+  if(type==='ratio'){ const a=rand(1,6), b=rand(1,6); const parts=a+b; const total=parts*rand(3,10+lv); const larger=Math.max(a,b)*(total/parts); return {text:`Split $${total} in the ratio ${a}:${b}. What is the larger share ($)?`, answer:larger, tol:0.6}; }
+  if(type==='rate'){ const t=rand(2,8); const speed=rand(20,80); const dist=speed*t; return {text:`A wagon travels ${dist} miles in ${t} hours. What is its speed (mph)?`, answer:speed, tol:0.6}; }
+  if(type==='proportion'){ const unit=rand(2,9); const price=rand(2,10); const target=rand(3,14); return {text:`If ${unit} items cost $${price*unit}, how much do ${target} items cost ($)?`, answer:(price*unit/unit)*target, tol:0.6}; }
+  const total=rand(20,80+lv*5); const p=choice([10,20,25,40,50]); return {text:`Out of ${total} cattle, ${p}% are branded. How many cattle is that?`, answer: total*p/100, tol:0.8};
+}
+function genStage5(lv){
+  const type = choice(['power','sqrt','neg','order']);
+  if(type==='power'){ const a=rand(2,Math.min(9,3+Math.floor(lv/2))); const b=choice([2,3]); return qNum(`${a}^${b} = ?`, Math.pow(a,b)); }
+  if(type==='sqrt'){ const r=rand(2,12+lv); return qNum(`√${r*r} = ?`, r); }
+  if(type==='neg'){ const a=rand(1,20+lv*3), b=rand(1,30+lv*3); const op=choice(['-','×']); if(op==='-') return qNum(`${a} − ${b} = ?`, a-b); return qNum(`(−${a}) × ${rand(2,9)} = ?`, -a*b%100 || -a*rand(2,9)); }
+  const a=rand(2,10), b=rand(2,10), c=rand(2,10); return qNum(`${a} + (−${b}) × ${c} = ?`, a - b*c);
+}
+function genStage6(lv){
+  const type = choice(['simplify','onestep','twostep']);
+  if(type==='simplify'){ const c1=rand(2,9+lv), c2=rand(2,9+lv); return {text:`Simplify: ${c1}x + ${c2}x = kx. What is k?`, answer:c1+c2, tol:0}; }
+  if(type==='onestep'){ const x=rand(1,20+lv*2), b=rand(1,30); return {text:`Solve for x: x + ${b} = ${x+b}`, answer:x, tol:0}; }
+  const a=rand(2,9), x=rand(1,15+lv), b=rand(1,20); const c=a*x+b; return {text:`Solve for x: ${a}x + ${b} = ${c}`, answer:x, tol:0};
+}
+function genStage7(lv){
+  const type = choice(['linear','inequality','sequence','wordalg']);
+  if(type==='linear'){ const a=rand(2,10), x=rand(-10,15), b=rand(-15,15); const c=a*x+b; const bs = b>=0?`+ ${b}`:`− ${Math.abs(b)}`; return {text:`Solve for x: ${a}x ${bs} = ${c}`, answer:x, tol:0}; }
+  if(type==='inequality'){ const a=rand(2,6), b=rand(1,15), c=rand(10,40); const xmin = Math.ceil((c-b)/a + 0.0001); return {text:`Solve: ${a}x + ${b} > ${c}. What is the smallest integer value of x that works?`, answer:xmin, tol:0}; }
+  if(type==='sequence'){ const start=rand(1,15), step=rand(2,9); const terms=[start,start+step,start+2*step,start+3*step]; return {text:`What is the next term in the sequence: ${terms.join(', ')}, ?`, answer:start+4*step, tol:0}; }
+  const n=rand(3,9), add=rand(1,20), total=rand(10,60); return {text:`${n} times a number, plus ${add}, equals ${n*rand(2,9)+add}. Find the number.`, answer:(()=>{const num=rand(2,9); return num;})(), tol:0}; // fallback handled below
+}
+// fix wordalg to be well-formed:
+function genStage7Fixed(lv){
+  const r = Math.random();
+  if(r<0.28){ const a=rand(2,10), x=rand(-10,15), b=rand(-15,15); const c=a*x+b; const bs = b>=0?`+ ${b}`:`− ${Math.abs(b)}`; return {text:`Solve for x: ${a}x ${bs} = ${c}`, answer:x, tol:0}; }
+  if(r<0.55){ const a=rand(2,6), b=rand(1,15), c=rand(10,40); const xmin = Math.ceil((c-b)/a + 0.0001); return {text:`Solve: ${a}x + ${b} > ${c}. What is the smallest integer value of x that works?`, answer:xmin, tol:0}; }
+  if(r<0.8){ const start=rand(1,15), step=rand(2,9); const terms=[start,start+step,start+2*step,start+3*step]; return {text:`What is the next term in the sequence: ${terms.join(', ')}, ?`, answer:start+4*step, tol:0}; }
+  const num=rand(2,15+lv), n=rand(2,9), add=rand(1,20); return {text:`${n} times a number, plus ${add}, equals ${n*num+add}. What is the number?`, answer:num, tol:0};
+}
+function genStage8(lv){
+  const type = choice(['angle','perim','area','triarea','circle','volume']);
+  if(type==='angle'){ const a=rand(30,110), b=rand(20,110-Math.max(0,a-110>0?0:0)); const bb=rand(20,140); const c=180-a-bb; if(c<5||c>150) return genStage8(lv); return {text:`A triangle has angles ${a}° and ${bb}°. What is the third angle (°)?`, answer:c, tol:0}; }
+  if(type==='perim'){ const l=rand(4,20+lv), w=rand(3,18+lv); return {text:`A rectangle is ${l}cm by ${w}cm. What is its perimeter (cm)?`, answer:2*(l+w), tol:0}; }
+  if(type==='area'){ const l=rand(4,20+lv), w=rand(3,18+lv); return {text:`A rectangle is ${l}cm by ${w}cm. What is its area (cm²)?`, answer:l*w, tol:0}; }
+  if(type==='triarea'){ const b=rand(4,20+lv), h=rand(3,18+lv); return {text:`A triangle has base ${b}cm and height ${h}cm. What is its area (cm²)?`, answer:0.5*b*h, tol:0.3}; }
+  if(type==='circle'){ const r=rand(2,10+Math.floor(lv/2)); return {text:`A circle has radius ${r}cm. What is its area (cm², use π≈3.14, 1 d.p.)?`, answer:Math.round(3.14*r*r*10)/10, tol:0.6}; }
+  const l=rand(2,10), w=rand(2,10), h=rand(2,10); return {text:`A box is ${l}cm × ${w}cm × ${h}cm. What is its volume (cm³)?`, answer:l*w*h, tol:0};
+}
+function genStage9(lv){
+  const pool=[genStage3,genStage4,genStage5,genStage6,genStage7Fixed,genStage8];
+  return choice(pool)(lv+4);
+}
+function genStage10(lv){
+  if(Math.random()<0.4){
+    const x=rand(2,9); const a=rand(2,6), b=rand(1,20); const c=a*x+b;
+    const bs = b>=0?`+ ${b}`:`− ${Math.abs(b)}`;
+    const mode = choice(['sq','double','plus']);
+    if(mode==='sq') return {text:`First solve for x: ${a}x ${bs} = ${c}. Then find x² + 3.`, answer:x*x+3, tol:0};
+    if(mode==='double') return {text:`First solve for x: ${a}x ${bs} = ${c}. Then find 2x − 5.`, answer:2*x-5, tol:0};
+    return {text:`First solve for x: ${a}x ${bs} = ${c}. Then find 3x + 4.`, answer:3*x+4, tol:0};
+  }
+  const pool=[genStage5,genStage6,genStage7Fixed,genStage8,genStage4];
+  return choice(pool)(lv+6);
+}
+function generateQuestion(stageIdx, levelIdx){
+  const gens=[genStage1,genStage2,genStage3,genStage4,genStage5,genStage6,genStage7Fixed,genStage8,genStage9,genStage10];
+  return gens[stageIdx-1](levelIdx);
+}
+
+function makeMultipleChoice(answer){
+  const decoys = new Set();
+  let tries=0;
+  while(decoys.size<3 && tries<30){
+    tries++;
+    const delta = choice([-1,1])*rand(1,Math.max(2,Math.round(Math.abs(answer)*0.3)+2));
+    const d = Math.round((answer+delta)*100)/100;
+    if(d!==answer) decoys.add(d);
+  }
+  const opts = shuffle([answer,...Array.from(decoys)].slice(0,4));
+  while(opts.length<4) opts.push(answer + rand(1,9));
+  return opts;
+}
+
+/* ===================== STATE ===================== */
+function defaultState(){
+  return {
+    coins: 0,
+    guns: ['peacemaker'],
+    equippedGun: 'peacemaker',
+    skins: ['classic'],
+    equippedSkin: 'classic',
+    accOwned: ['mustache-classic','none-eyewear','bandana','none-charm','none-extra'],
+    accEquipped: Object.assign({}, DEFAULT_ACC),
+    progress: STAGES.map((s,i)=>({ unlocked: i===0, levels: Array(10).fill(0) /* 0 locked-status handled separately; store 0=not done,1=done,2=perfect */ })),
+    stats: { correct:0, wrong:0, questions:0, totalTime:0, longestStreak:0, defeated:0, bossesDefeated:0, totalScore:0, timePlayedSec:0 },
+    settings: { musicVol:70, sfxVol:80, reducedMotion:false, reducedFlash:false }
+  };
+}
+let S = defaultState();
+let saveLoaded = false;
+const SAVE_KEY = 'calcboyshooter-save';
+function hasChatStorage(){
+  return typeof window!=='undefined' && window.storage && typeof window.storage.get==='function' && typeof window.storage.set==='function';
+}
+
+async function loadSave(){
+  try{
+    let raw = null;
+    if(hasChatStorage()){
+      const r = await window.storage.get(SAVE_KEY, false);
+      if(r && r.value) raw = r.value;
+    } else if(typeof localStorage!=='undefined'){
+      raw = localStorage.getItem(SAVE_KEY);
+    }
+    if(raw){
+      const loaded = JSON.parse(raw); S = Object.assign(defaultState(), loaded);
+      // ensure structural integrity if STAGES length changed
+      if(!S.progress || S.progress.length!==STAGES.length) S.progress = defaultState().progress;
+      if(!S.accOwned) S.accOwned = defaultState().accOwned;
+      if(!S.accEquipped) S.accEquipped = defaultState().accEquipped;
+      S.accEquipped = Object.assign({}, DEFAULT_ACC, S.accEquipped);
+    }
+  }catch(e){ /* no save yet, or storage unavailable */ }
+  saveLoaded = true;
+}
+let saveTimer=null;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const json = JSON.stringify(S);
+    try{
+      if(hasChatStorage()){
+        await window.storage.set(SAVE_KEY, json, false);
+      } else if(typeof localStorage!=='undefined'){
+        localStorage.setItem(SAVE_KEY, json);
+      }
+    }catch(e){ /* storage unavailable or full */ }
+  }, 400);
+}
+
+/* ===================== AUDIO ENGINE (synthesized, no external files) ===================== */
+let audioCtx=null, musicGain=null, sfxGain=null, musicPlaying=false, musicTimer=null, musicStep=0;
+function ensureAudio(){
+  if(!audioCtx){
+    try{
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      musicGain = audioCtx.createGain(); musicGain.gain.value = (S.settings.musicVol/100)*0.28; musicGain.connect(audioCtx.destination);
+      sfxGain = audioCtx.createGain(); sfxGain.gain.value = (S.settings.sfxVol/100)*0.6; sfxGain.connect(audioCtx.destination);
+    }catch(e){ audioCtx=null; }
+  }
+  if(audioCtx && audioCtx.state==='suspended'){ audioCtx.resume().catch(()=>{}); }
+}
+function updateAudioVolumes(){
+  if(musicGain) musicGain.gain.value = (S.settings.musicVol/100)*0.28;
+  if(sfxGain) sfxGain.gain.value = (S.settings.sfxVol/100)*0.6;
+}
+function beep(freq, dur, type, node, delay, vol){
+  if(!audioCtx || !node) return;
+  delay=delay||0; vol=vol===undefined?1:vol;
+  const t0 = audioCtx.currentTime + delay;
+  const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+  osc.type = type||'square'; osc.frequency.setValueAtTime(freq, t0);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.linearRampToValueAtTime(vol, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+  osc.connect(g); g.connect(node);
+  osc.start(t0); osc.stop(t0+dur+0.03);
+}
+function noiseBurst(dur, node, delay, vol){
+  if(!audioCtx || !node) return;
+  delay=delay||0; vol=vol===undefined?1:vol;
+  const t0 = audioCtx.currentTime + delay;
+  const bufferSize = Math.max(1, Math.floor(audioCtx.sampleRate*dur));
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * (1 - i/bufferSize);
+  const src = audioCtx.createBufferSource(); src.buffer = buffer;
+  const g = audioCtx.createGain(); g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.001, t0+dur);
+  src.connect(g); g.connect(node); src.start(t0);
+}
+function sfxClick(){ ensureAudio(); beep(760,0.045,'square',sfxGain,0,0.22); }
+function sfxCorrect(){ ensureAudio(); beep(523,0.09,'square',sfxGain,0,0.28); beep(659,0.09,'square',sfxGain,0.08,0.28); beep(784,0.15,'square',sfxGain,0.16,0.32); }
+function sfxWrong(){ ensureAudio(); beep(220,0.18,'sawtooth',sfxGain,0,0.28); beep(160,0.24,'sawtooth',sfxGain,0.06,0.28); }
+function sfxDraw(){ ensureAudio(); beep(1400,0.025,'square',sfxGain,0,0.18); }
+function sfxShot(){ ensureAudio(); noiseBurst(0.16,sfxGain,0,0.5); beep(130,0.13,'sawtooth',sfxGain,0,0.28); }
+function sfxCoin(){ ensureAudio(); beep(988,0.06,'square',sfxGain,0,0.22); beep(1319,0.09,'square',sfxGain,0.06,0.26); }
+function sfxStreak(){ ensureAudio(); [523,659,784,1047].forEach((f,i)=>beep(f,0.11,'square',sfxGain,i*0.07,0.3)); }
+function sfxTimerWarning(){ ensureAudio(); beep(440,0.07,'square',sfxGain,0,0.18); }
+function sfxBossIntro(){ ensureAudio(); beep(98,0.5,'sawtooth',sfxGain,0,0.35); beep(131,0.5,'sawtooth',sfxGain,0.12,0.28); }
+function sfxLevelComplete(){ ensureAudio(); [523,659,784,1047,1319].forEach((f,i)=>beep(f,0.15,'square',sfxGain,i*0.09,0.3)); }
+function sfxGameOver(){ ensureAudio(); [392,349,294,247,196].forEach((f,i)=>beep(f,0.26,'sawtooth',sfxGain,i*0.15,0.28)); }
+
+const MUSIC_LEAD = [220,0,247,262,0,220,196,0, 220,0,262,294,0,262,220,0];
+const MUSIC_BASS = [110,0,0,110, 98,0,0,98, 110,0,0,110, 98,0,131,0];
+const STEP_DUR = 0.24;
+function scheduleMusicStep(){
+  if(!musicPlaying) return;
+  if(audioCtx){
+    const lf = MUSIC_LEAD[musicStep % MUSIC_LEAD.length];
+    const bf = MUSIC_BASS[musicStep % MUSIC_BASS.length];
+    if(lf>0) beep(lf, STEP_DUR*0.85, 'triangle', musicGain, 0, 0.55);
+    if(bf>0) beep(bf, STEP_DUR*0.95, 'triangle', musicGain, 0, 0.4);
+  }
+  musicStep++;
+  musicTimer = setTimeout(scheduleMusicStep, STEP_DUR*1000);
+}
+function startMusic(){ ensureAudio(); if(musicPlaying) return; musicPlaying=true; musicStep=0; scheduleMusicStep(); }
+function stopMusic(){ musicPlaying=false; clearTimeout(musicTimer); }
+let audioUnlocked=false;
+function unlockAudioOnce(){
+  if(audioUnlocked) return;
+  audioUnlocked=true;
+  ensureAudio();
+  startMusic();
+  document.removeEventListener('pointerdown', unlockAudioOnce);
+  document.removeEventListener('keydown', unlockAudioOnce);
+}
+document.addEventListener('pointerdown', unlockAudioOnce, {once:true});
+document.addEventListener('keydown', unlockAudioOnce, {once:true});
+
+/* ===================== GAME RUNTIME STATE ===================== */
+let G = null; // current level run
+let screen = 'menu';
+let animFrame = null;
+
+function fxBurst(html, x, y, cls){
+  const el=document.createElement('div');
+  el.className=cls; el.style.left=x+'px'; el.style.top=y+'px'; el.innerHTML=html;
+  $('#fxLayer').appendChild(el);
+  setTimeout(()=>el.remove(), 1100);
+}
+function screenShake(){
+  if(S.settings.reducedMotion) return;
+  const app=$('#app'); app.classList.remove('shake'); void app.offsetWidth; app.classList.add('shake');
+}
+function flashFX(kind){
+  if(S.settings.reducedFlash && kind==='bad') return;
+  const el=document.createElement('div'); el.className='feedback-flash '+kind;
+  document.body.appendChild(el); setTimeout(()=>el.remove(),550);
+}
+
+/* ===================== RENDER HELPERS ===================== */
+function skinById(id){ return SKINS.find(s=>s.id===id) || SKINS[0]; }
+function gunById(id){ return GUNS.find(g=>g.id===id) || GUNS[0]; }
+function stagePercent(i){ const p=S.progress[i]; const done=p.levels.filter(v=>v>0).length; return Math.round(done/10*100); }
+function isStageUnlocked(i){ return S.progress[i].unlocked; }
+function isLevelUnlocked(si,li){ if(li===0) return isStageUnlocked(si); return isStageUnlocked(si) && S.progress[si].levels[li-1]>0; }
+
+function setSky(stageIdx){
+  const s = STAGES[stageIdx] || STAGES[0];
+  document.documentElement.style.setProperty('--sky-top', s.sky[0]);
+  document.documentElement.style.setProperty('--sky-mid', s.sky[1]);
+  document.documentElement.style.setProperty('--sky-low', s.sky[2]);
+}
+
+function cowboySVGVars(skin){
+  return `--hatcolor:${skin.hat};--bodycolor:${skin.body};--legcolor:${skin.leg};--accentcolor:${skin.accent};--skintone:${skin.skin};--haircolor:${skin.hair||'#2a1a10'};`;
+}
+function cowboyInner(gunId, acc){
+  acc = Object.assign({}, DEFAULT_ACC, acc||{});
+  const fh=acc.facialhair, ew=acc.eyewear, nw=acc.neckwear, hc=acc.hatcharm, ex=acc.extra;
+
+  let facialHTML = '';
+  if(fh==='mustache-classic') facialHTML = `<div class="mustache"></div>`;
+  else if(fh==='goatee') facialHTML = `<div class="mustache thin"></div><div class="goatee"></div>`;
+  else if(fh==='full-beard') facialHTML = `<div class="mustache"></div><div class="beard"></div>`;
+  // clean-shaven: nothing
+
+  let eyewearHTML = '';
+  if(ew==='sunglasses') eyewearHTML = `<div class="sunglasses"></div>`;
+  else if(ew==='eyepatch') eyewearHTML = `<div class="eyepatch"></div><div class="patchstrap"></div>`;
+  else if(ew==='monocle') eyewearHTML = `<div class="monocle"></div>`;
+
+  let neckHTML = `<div class="neck bandana"></div>`;
+  if(nw==='stringtie') neckHTML = `<div class="neck stringtie"><div class="tieknot"></div></div>`;
+  else if(nw==='badge') neckHTML = `<div class="neck badge">⭐</div>`;
+  else if(nw==='goldchain') neckHTML = `<div class="neck goldchain"></div>`;
+
+  let charmHTML = '';
+  if(hc==='feather') charmHTML = `<div class="hatcharm feather">🪶</div>`;
+  else if(hc==='starpin') charmHTML = `<div class="hatcharm">⭐</div>`;
+  else if(hc==='skullpin') charmHTML = `<div class="hatcharm">💀</div>`;
+
+  let extraHTML = '';
+  if(ex==='cigar') extraHTML = `<div class="cigar"></div>`;
+  else if(ex==='goldtooth') extraHTML = `<div class="goldtooth"></div>`;
+  else if(ex==='scar') extraHTML = `<div class="scar"></div>`;
+
+  return `
+    <div class="hat">${charmHTML}</div>
+    <div class="head">
+      <div class="sideburn l"></div><div class="sideburn r"></div>
+      <div class="brow l"></div><div class="brow r"></div>
+      <div class="eye l"><div class="glint"></div></div><div class="eye r"><div class="glint"></div></div>
+      <div class="nose"></div>
+      ${facialHTML}
+      <div class="mouth"></div>
+      ${eyewearHTML}
+      ${extraHTML}
+    </div>
+    ${neckHTML}
+    <div class="body">
+      <div class="belt"><div class="buckle"></div></div>
+    </div>
+    <div class="legs"><div class="boot l"></div><div class="boot r"></div></div>
+    <div class="arm"><div class="gun-hold">${gunSVG(gunId, 46, 27)}</div></div>
+  `;
+}
+
+/* ===================== SCREENS ===================== */
+function go(scr){ screen=scr; render(); window.scrollTo(0,0); }
+
+function render(){
+  const el = $('#screen');
+  if(screen==='menu') el.innerHTML = renderMenu();
+  else if(screen==='stages') el.innerHTML = renderStages();
+  else if(screen==='levels') el.innerHTML = renderLevels();
+  else if(screen==='guns') el.innerHTML = renderGuns();
+  else if(screen==='skins') el.innerHTML = renderSkins();
+  else if(screen==='closet') el.innerHTML = renderCloset();
+  else if(screen==='stats') el.innerHTML = renderStats();
+  else if(screen==='settings') el.innerHTML = renderSettings();
+  else if(screen==='game') el.innerHTML = renderGame();
+  else if(screen==='results') el.innerHTML = renderResults();
+  else if(screen==='endgame') el.innerHTML = renderEndgame();
+  bindEvents();
+}
+
+function renderMenu(){
+  setSky(-1);
+  document.documentElement.style.setProperty('--sky-top', '#3a2a44');
+  document.documentElement.style.setProperty('--sky-mid', '#c4562e');
+  document.documentElement.style.setProperty('--sky-low', '#e8935b');
+  return `
+  <div class="title-hero">
+    <h1>CalcBoyShooter</h1>
+    <div class="tagline">"Calculate fast. Draw faster."</div>
+    <div class="sixgun-divider"></div>
+  </div>
+  <div class="menu-list">
+    <button class="btn primary" data-go="playnext">▶ PLAY</button>
+    <button class="btn" data-go="stages">🗺 STAGES</button>
+    <button class="btn" data-go="guns">🔫 GUN COLLECTION</button>
+    <button class="btn" data-go="skins">🤠 SKINS</button>
+    <button class="btn" data-go="closet">🧥 CLOSET</button>
+    <button class="btn" data-go="stats">📊 STATS</button>
+    <button class="btn" data-go="settings">⚙ SETTINGS</button>
+  </div>
+  <div class="small-note">💰 ${S.coins} coins &nbsp;·&nbsp; Equipped: ${gunById(S.equippedGun).name} &amp; ${skinById(S.equippedSkin).name}</div>
+  `;
+}
+
+function findNextLevel(){
+  for(let si=0; si<STAGES.length; si++){
+    if(!isStageUnlocked(si)) break;
+    for(let li=0; li<10; li++){
+      if(S.progress[si].levels[li]===0) return {si,li};
+    }
+  }
+  return {si:0,li:0};
+}
+
+function renderStages(){
+  const cards = STAGES.map((s,i)=>{
+    const unlocked = isStageUnlocked(i);
+    const pct = stagePercent(i);
+    const bossDone = S.progress[i].levels[9]>0;
+    return `<div class="stage-card ${unlocked?'':'locked'}" data-stage="${i}">
+      ${unlocked? '' : '<div class="lock-badge">🔒</div>'}
+      <div class="swatch" style="background:linear-gradient(135deg,${s.sky[1]},${s.sky[2]})"></div>
+      <h3>${i+1}. ${s.name}</h3>
+      <div class="meta">${s.focus}<br>Boss: ${s.boss} ${bossDone?'✅':''}<br>Reward: ${s.gun.icon} ${s.gun.name}</div>
+      <div class="bar"><div style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button>
+    <div class="hud-pill">💰 ${S.coins}</div></div>
+  <div class="wrap">
+    <h2 style="text-align:center;">Choose Your Stage</h2>
+    <div class="grid2">${cards}</div>
+  </div>`;
+}
+
+let selectedStage = 0;
+function renderLevels(){
+  const s = STAGES[selectedStage];
+  const nodes = Array.from({length:10}).map((_,li)=>{
+    const status = S.progress[selectedStage].levels[li];
+    const unlocked = isLevelUnlocked(selectedStage, li);
+    const boss = li===9;
+    let cls='level-node';
+    if(!unlocked) cls+=' locked'; else if(status===2) cls+=' perfect'; else if(status===1) cls+=' completed';
+    if(boss) cls+=' boss';
+    return `<div class="${cls}" ${unlocked?`data-level="${li}"`:''}>
+      ${boss? '💀' : (li+1)}
+      ${status===2?'<div class="star">⭐</div>':''}
+    </div>`;
+  }).join('');
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="stages">← Stages</button>
+    <div class="hud-pill">💰 ${S.coins}</div></div>
+  <div class="wrap">
+    <h2 style="text-align:center;">${s.name}</h2>
+    <p style="text-align:center;color:var(--paper);opacity:.9;margin-top:-8px;">${s.focus}</p>
+    <div class="grid5" style="justify-items:center;max-width:420px;margin:24px auto;">${nodes}</div>
+    <div class="panel" style="max-width:420px;margin:0 auto;text-align:center;">
+      <b>Boss:</b> ${s.boss} &nbsp;|&nbsp; <b>Gun reward:</b> ${s.gun.icon} ${s.gun.name}
+    </div>
+  </div>`;
+}
+
+function renderGuns(){
+  const cards = GUNS.map(g=>{
+    const owned = S.guns.includes(g.id);
+    const eq = S.equippedGun===g.id;
+    const v = GUN_VISUALS[g.id];
+    return `<div class="gun-card ${owned?'':'locked'} ${eq?'equipped':''}">
+      <div class="gun-plaque" style="background:linear-gradient(180deg, ${v.frame}22, ${v.frame}11);">
+        ${gunSVG(g.id, 96, 58)}
+        <div class="gun-emblem" style="color:${v.accent};">${v.emblem||''}</div>
+      </div>
+      <h3>${g.icon} ${g.name}</h3>
+      <p>${owned? g.desc : 'Defeat the matching stage boss to unlock.'}</p>
+      ${owned? (eq? `<span class="btn sm gold" style="pointer-events:none;">Equipped</span>` : `<button class="btn sm" data-equip-gun="${g.id}">Equip</button>`) : ''}
+    </div>`;
+  }).join('');
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button><div class="hud-pill">💰 ${S.coins}</div></div>
+  <div class="wrap"><h2 style="text-align:center;">Gun Collection</h2>
+  <div class="grid2">${cards}</div></div>`;
+}
+
+function renderSkins(){
+  const cards = SKINS.map(sk=>{
+    const owned = S.skins.includes(sk.id);
+    const eq = S.equippedSkin===sk.id;
+    return `<div class="skin-card ${eq?'equipped':''}">
+      <div class="skin-swatch" style="background:linear-gradient(160deg,${sk.body},${sk.hat})"></div>
+      <h3>${sk.name}</h3>
+      <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${sk.price===0? 'Free' : sk.price+' coins'}</div>
+      ${owned? (eq? `<span class="btn sm gold" style="pointer-events:none;">Equipped</span>` : `<button class="btn sm" data-equip-skin="${sk.id}">Equip</button>`)
+              : `<button class="btn sm ${S.coins>=sk.price?'primary':''}" data-buy-skin="${sk.id}" ${S.coins<sk.price?'disabled':''}>Buy</button>`}
+    </div>`;
+  }).join('');
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button><div class="hud-pill">💰 ${S.coins}</div></div>
+  <div class="wrap"><h2 style="text-align:center;">Skin Shop</h2>
+  <p style="text-align:center;color:var(--paper);opacity:.9;margin-top:-8px;">Cosmetic only — every skin plays exactly the same.</p>
+  <div class="grid2">${cards}</div></div>`;
+}
+
+function renderCloset(){
+  const skin = skinById(S.equippedSkin);
+  const previewGun = S.equippedGun;
+  const slotSections = ACCESSORY_SLOTS.map(slot=>{
+    const items = ACCESSORIES.filter(a=>a.slot===slot.id);
+    const cards = items.map(a=>{
+      const owned = S.accOwned.includes(a.id);
+      const eq = S.accEquipped[slot.id]===a.id;
+      return `<div class="skin-card ${eq?'equipped':''}">
+        <div class="skin-swatch" style="display:flex;align-items:center;justify-content:center;font-size:30px;background:linear-gradient(160deg,var(--paper-dark),var(--paper));">${a.icon}</div>
+        <h3>${a.name}</h3>
+        <div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">${a.price===0? 'Free' : a.price+' coins'}</div>
+        ${owned? (eq? `<span class="btn sm gold" style="pointer-events:none;">Equipped</span>` : `<button class="btn sm" data-equip-acc="${a.id}" data-acc-slot="${slot.id}">Equip</button>`)
+                : `<button class="btn sm ${S.coins>=a.price?'primary':''}" data-buy-acc="${a.id}" data-acc-slot="${slot.id}" ${S.coins<a.price?'disabled':''}>Buy</button>`}
+      </div>`;
+    }).join('');
+    return `<h3 style="color:var(--paper);text-shadow:2px 2px 0 rgba(0,0,0,.4);margin:22px 0 10px;">${slot.label}</h3>
+      <div class="grid2">${cards}</div>`;
+  }).join('');
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button><div class="hud-pill">💰 ${S.coins}</div></div>
+  <div class="wrap">
+    <h2 style="text-align:center;">Closet</h2>
+    <p style="text-align:center;color:var(--paper);opacity:.9;margin-top:-8px;">Dress up your CalcBoy — purely cosmetic, works with any skin or gun.</p>
+    <div class="panel" style="max-width:280px;margin:20px auto;display:flex;justify-content:center;padding:26px 10px 34px;">
+      <div class="cowboy left" style="${cowboySVGVars(skin)}transform:scale(1.5);transform-origin:bottom center;">
+        ${cowboyInner(previewGun, S.accEquipped)}
+      </div>
+    </div>
+    ${slotSections}
+  </div>`;
+}
+function renderStats(){
+  const st = S.stats;
+  const acc = st.questions>0? Math.round(st.correct/st.questions*100) : 0;
+  const avgT = st.correct>0? (st.totalTime/st.correct).toFixed(1) : '0.0';
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button></div>
+  <div class="wrap"><div class="panel results-card">
+    <h2 style="text-align:center;">Lifetime Stats</h2>
+    <div class="stat-line"><span>Total Score</span><b class="num">${st.totalScore}</b></div>
+    <div class="stat-line"><span>Coins Earned (total)</span><b class="num">${st.totalScore>0? S.coins : S.coins}</b></div>
+    <div class="stat-line"><span>Questions Answered</span><b class="num">${st.questions}</b></div>
+    <div class="stat-line"><span>Correct / Wrong</span><b class="num">${st.correct} / ${st.wrong}</b></div>
+    <div class="stat-line"><span>Accuracy</span><b class="num">${acc}%</b></div>
+    <div class="stat-line"><span>Avg. Response Time</span><b class="num">${avgT}s</b></div>
+    <div class="stat-line"><span>Longest Streak</span><b class="num">🔥 ${st.longestStreak}</b></div>
+    <div class="stat-line"><span>Opponents Defeated</span><b class="num">${st.defeated}</b></div>
+    <div class="stat-line"><span>Bosses Defeated</span><b class="num">${st.bossesDefeated} / 10</b></div>
+    <div class="stat-line"><span>Guns Collected</span><b class="num">${S.guns.length} / 10</b></div>
+    <div class="btn-row" style="margin-top:16px;"><button class="btn" data-go="menu">Back to Menu</button></div>
+  </div></div>`;
+}
+
+function renderSettings(){
+  const set = S.settings;
+  return `
+  <div class="topbar"><button class="btn sm ghost" data-go="menu">← Back</button></div>
+  <div class="wrap"><div class="panel results-card">
+    <h2 style="text-align:center;">Settings</h2>
+    <div class="settings-row"><label>Music Volume</label><input type="range" min="0" max="100" value="${set.musicVol}" data-setting="musicVol"></div>
+    <div class="settings-row"><label>Sound Effects Volume</label><input type="range" min="0" max="100" value="${set.sfxVol}" data-setting="sfxVol"></div>
+    <div class="settings-row"><label>Reduced Screen Shake / Motion</label><div class="toggle ${set.reducedMotion?'on':''}" data-toggle="reducedMotion"></div></div>
+    <div class="settings-row"><label>Reduced Flashing Effects</label><div class="toggle ${set.reducedFlash?'on':''}" data-toggle="reducedFlash"></div></div>
+    <p style="font-size:12px;color:var(--ink-soft);margin-top:14px;">Controls: type your answer and press <b>Enter</b>, or tap/click the on-screen buttons. Keyboard and mouse both work throughout.</p>
+    <div class="btn-row" style="margin-top:10px;"><button class="btn" data-go="menu">Back to Menu</button></div>
+  </div></div>`;
+}
+
+/* ---------- GAMEPLAY ---------- */
+function opponentHat(idx){ return choice(['#3a2a1e','#4a2018','#20242e','#5a3826','#2a2a2a']); }
+
+function buildQueue(si, li){
+  const stage = STAGES[si];
+  const isBoss = li===9;
+  const globalDiff = difficulty(si+1, li+1);
+  let count = isBoss ? rand(2,3) : (li<3? rand(3,4) : li<7? rand(4,6) : rand(6,8));
+  const names = shuffle(NAME_POOL).slice(0, count);
+  const queue = names.map(n=>({name:n, isBoss:false, hp:1, maxHp:1, color:opponentHat()}));
+  if(isBoss){
+    const hp = clamp(2 + Math.floor(si/2), 2, 5);
+    queue.push({name: stage.boss, isBoss:true, hp, maxHp:hp, color:'#1a1414', quote: stage.quote});
+  }
+  return queue;
+}
+
+function bossMechanics(si){
+  // si is 0-indexed stage
+  return {
+    reducedTime: [3,7].includes(si), // Red-Eye, Deadshot
+    multipleChoice: [2,9].includes(si), // Gambler, Final Gunslinger
+    questionSwap: [5,9].includes(si), // Snake, Final Gunslinger
+    aimInterrupt: [6,9].includes(si) // Black Hat, Final Gunslinger
+  };
+}
+
+function startLevel(si, li){
+  const heartBonus = (S.equippedGun==='secondchance'?1:0) + (S.equippedGun==='legend'?1:0);
+  const maxHP = (HEARTS_BASE + heartBonus) * HP_PER_HEART;
+  G = {
+    si, li,
+    queue: buildQueue(si, li),
+    qIndex: 0,
+    lives: maxHP,
+    maxLives: maxHP,
+    streak: 0,
+    coinsEarned: 0,
+    score: 0,
+    correct: 0,
+    wrong: 0,
+    mistakeShieldUsed: false,
+    deadEyeUsed: false,
+    timeLeft: 0,
+    timeMax: 0,
+    timerActive: false,
+    phase: 'question', // question, duel, result
+    question: null,
+    mcOptions: null,
+    swapFlashed: false,
+    respTimes: [],
+    bossIntroShown: false
+  };
+  setSky(si);
+  const bossIdx = G.queue.findIndex(o=>o.isBoss);
+  if(bossIdx===G.queue.length-1 && G.queue[G.queue.length-1].isBoss && G.qIndex===bossIdx){
+    // will be caught in nextOpponent
+  }
+  screen = 'game';
+  nextOpponent();
+}
+
+function currentOpponent(){ return G.queue[G.qIndex]; }
+
+function nextOpponent(){
+  if(!G) return;
+  if(G.qIndex >= G.queue.length){ finishLevel(true); return; }
+  const opp = currentOpponent();
+  if(opp.isBoss && !G.bossIntroShownFor){
+    G.bossIntroShownFor = true;
+    showBossIntro(opp);
+    return;
+  }
+  setupQuestion();
+}
+
+function showBossIntro(opp){
+  const bossGunId = STAGES[G.si].gun.id;
+  sfxBossIntro();
+  const el = document.createElement('div');
+  el.className='boss-intro';
+  el.innerHTML = `
+    <div class="cowboy right" style="--hatcolor:${opp.color};--bodycolor:#2a2a2a;--legcolor:#111;--accentcolor:#a3312a;--skintone:#c48a5a;--haircolor:#151010;">
+      ${cowboyInner(bossGunId)}
+    </div>
+    <h2>${opp.name}</h2>
+    <div class="quote">"${opp.quote}"</div>
+    <p style="color:var(--gold-bright);font-family:'Roboto Slab',serif;font-size:13px;margin-top:-14px;">Wielding the ${STAGES[G.si].gun.name}</p>
+    <button class="btn danger" id="faceBossBtn">FACE ${opp.name.toUpperCase()}</button>
+  `;
+  document.body.appendChild(el);
+  $('#faceBossBtn').onclick = ()=>{ el.remove(); setupQuestion(); };
+}
+
+function confirmQuitToMenu(){
+  const el = document.createElement('div');
+  el.className='boss-intro';
+  el.innerHTML = `
+    <h2 style="font-size:clamp(24px,6vw,38px);">LEAVE THE SHOWDOWN?</h2>
+    <div class="quote">Quitting now forfeits this attempt — you'll keep any coins already earned, but the level won't count as complete.</div>
+    <div class="btn-row">
+      <button class="btn danger" id="confirmQuitBtn">Quit to Menu</button>
+      <button class="btn ghost" id="cancelQuitBtn">Keep Playing</button>
+    </div>
+  `;
+  document.body.appendChild(el);
+  $('#confirmQuitBtn').onclick = ()=>{
+    el.remove();
+    if(G){ stopTimer(); S.coins += Math.floor((G.coinsEarned||0)*0.4); persist(); G=null; }
+    go('menu');
+  };
+  $('#cancelQuitBtn').onclick = ()=>{ el.remove(); };
+}
+
+function setupQuestion(){
+  G.phase='question';
+  const opp = currentOpponent();
+  const mech = opp.isBoss ? bossMechanics(G.si) : {reducedTime:false,multipleChoice:false,questionSwap:false,aimInterrupt:false};
+  let q = generateQuestion(G.si+1, G.li+1);
+  const diff = difficulty(G.si+1, G.li+1);
+  let timeMax = clamp(20 - diff*15, 5, 20);
+  if(mech.reducedTime) timeMax *= 0.72;
+  if(S.equippedGun==='timekeeper') timeMax += 3;
+  if(S.equippedGun==='quickdraw') timeMax += 0.5;
+  timeMax = Math.round(timeMax*10)/10;
+  G.question = q;
+  G.mech = mech;
+  G.mcOptions = mech.multipleChoice ? makeMultipleChoice(q.answer) : null;
+  G.timeMax = timeMax;
+  G.timeLeft = timeMax;
+  G.swapFlashed = false;
+  G.warnPlayed = false;
+  G.qStart = performance.now();
+  G.deadEyeTriggeredThisQ = false;
+  render();
+  startTimer();
+}
+
+function startTimer(){
+  G.timerActive = true;
+  const tick = ()=>{
+    if(!G || !G.timerActive) return;
+    const bar = $('#timerFill');
+    const timerTextEl = $('#timerText');
+    G.timeLeft -= 0.05;
+    // Dead Eye gun: auto-slow once when under 30%
+    if(S.equippedGun==='deadeye' && !G.deadEyeUsed && !G.deadEyeTriggeredThisQ && G.timeLeft/G.timeMax < 0.35){
+      G.deadEyeTriggeredThisQ = true; G.deadEyeUsed = true;
+      G.timeLeft += G.timeMax*0.22;
+    }
+    // Snake / Final Gunslinger question swap
+    if(G.mech && G.mech.questionSwap && !G.swapFlashed && G.timeLeft/G.timeMax < 0.55 && Math.random()<0.02){
+      G.swapFlashed = true;
+      const newQ = generateQuestion(G.si+1, G.li+1);
+      G.question = newQ;
+      G.mcOptions = G.mech.multipleChoice ? makeMultipleChoice(newQ.answer) : null;
+      const qt = $('#qtext'); if(qt) qt.textContent = newQ.text;
+      const sf = $('#swapFlash'); if(sf) sf.style.display='block';
+      renderMCOnly();
+    }
+    if(bar){
+      const pct = clamp(G.timeLeft/G.timeMax*100,0,100);
+      bar.style.width = pct+'%';
+      bar.style.background = pct<25? 'var(--danger)' : pct<55? 'var(--gold)' : 'var(--success)';
+      if(pct<25 && !G.warnPlayed){ G.warnPlayed=true; sfxTimerWarning(); }
+    }
+    if(timerTextEl) timerTextEl.textContent = Math.max(0,G.timeLeft).toFixed(1)+'s';
+    if(G.timeLeft<=0){
+      G.timerActive=false;
+      handleAnswer(null, true);
+      return;
+    }
+    animFrame = requestAnimationFrame(tick);
+  };
+  animFrame = requestAnimationFrame(tick);
+}
+function stopTimer(){ G.timerActive=false; if(animFrame) cancelAnimationFrame(animFrame); }
+
+function renderMCOnly(){
+  const grid = $('#mcGrid');
+  if(!grid || !G.mcOptions) return;
+  grid.innerHTML = G.mcOptions.map(o=>`<button class="mc-btn" data-mc="${o}">${fmt(o)}</button>`).join('');
+  grid.querySelectorAll('[data-mc]').forEach(b=> b.onclick=()=>{ handleAnswer(parseFloat(b.dataset.mc), false); });
+}
+
+function submitTypedAnswer(){
+  const input = $('#answerInput');
+  if(!input) return;
+  const val = parseFloat(input.value);
+  if(isNaN(val)) return;
+  handleAnswer(val, false);
+}
+
+function handleAnswer(val, timedOut){
+  if(!G || G.phase!=='question') return;
+  stopTimer();
+  const q = G.question;
+  const respTime = (performance.now()-G.qStart)/1000;
+  let correct = false;
+  if(!timedOut && val!==null){
+    const tol = q.tol||0;
+    correct = Math.abs(val-q.answer) <= (tol||0.0001);
+  }
+  G.mistakeShieldAvailable = (S.equippedGun==='luckysix' && !G.mistakeShieldUsed);
+  let shielded = false;
+  let gambled = false;
+  if(!correct){
+    if(G.mistakeShieldAvailable){ shielded = true; G.mistakeShieldUsed = true; }
+    else if(S.equippedGun==='gambler' && Math.random()<0.33){ gambled = true; }
+  }
+  const effectiveCorrect = correct || shielded || gambled;
+
+  S.stats.questions++;
+  G.correct += correct?1:0;
+  G.wrong += correct?0:1;
+  if(correct){ S.stats.correct++; S.stats.totalTime += respTime; G.respTimes.push(respTime); } else { S.stats.wrong++; }
+
+  if(correct){
+    G.streak++;
+    S.stats.longestStreak = Math.max(S.stats.longestStreak, G.streak);
+    sfxCorrect();
+    let coinGain = 10;
+    if(respTime < G.timeMax*0.4) coinGain += 5;
+    if(G.streak>0 && G.streak%5===0){
+      let bonus = 15;
+      if(S.equippedGun==='outlawgun') bonus = Math.round(bonus*1.6);
+      coinGain += bonus;
+      showStreakPop(G.streak);
+      sfxStreak();
+    } else {
+      sfxCoin();
+    }
+    if(S.equippedGun==='sheriffgun') coinGain = Math.round(coinGain*1.25);
+    if(S.equippedGun==='legend') coinGain = Math.round(coinGain*1.1);
+    G.coinsEarned += coinGain;
+    G.score += Math.round(100 + (G.timeMax-respTime)*10);
+    flashFX('good');
+    playerDrawAndShoot(()=>{
+      const opp = currentOpponent();
+      opp.hp -= 1;
+      if(opp.hp<=0){
+        opponentFalls(()=>{ afterOpponentDefeated(opp); });
+      } else {
+        // boss survives, next question same opponent
+        G.qIndex_sameOpp = true;
+        setTimeout(()=>setupQuestion(), 500);
+      }
+    });
+  } else {
+    G.streak = 0;
+    sfxWrong();
+    flashFX('bad'); screenShake();
+    if(effectiveCorrect){
+      // shielded/gambled: treat as a miss but no life lost, opponent doesn't shoot
+      showMissMessage(shielded? "Lucky Six saved you!" : "Gambler's luck!");
+      setTimeout(()=>setupQuestion(), 900);
+    } else {
+      enemyShoots(()=>{
+        G.lives--;
+        if(G.lives<=0){ finishLevel(false); }
+        else { setTimeout(()=>setupQuestion(), 500); }
+      });
+    }
+  }
+  render();
+}
+
+function showMissMessage(msg){
+  const el = document.createElement('div');
+  el.className='streak-pop'; el.style.fontSize='22px'; el.textContent=msg;
+  $('#fxLayer').appendChild(el); setTimeout(()=>el.remove(),1000);
+}
+function showStreakPop(n){
+  const el = document.createElement('div');
+  el.className='streak-pop'; el.textContent='🔥 '+n+' STREAK!';
+  $('#fxLayer').appendChild(el); setTimeout(()=>el.remove(),1000);
+}
+
+function playerDrawAndShoot(cb){
+  const p = $('#playerCowboy'); const e = $('#enemyCowboy');
+  const speedMul = S.equippedGun==='quickdraw' ? 0.6 : 1;
+  const doAim = ()=>{
+    if(p) p.classList.add('draw');
+    sfxDraw();
+    setTimeout(()=>{
+      const muzzle = $('#playerMuzzle'); if(muzzle){ muzzle.classList.remove('flash'); void muzzle.offsetWidth; muzzle.classList.add('flash'); }
+      const bl = $('#bulletLine'); if(bl){ bl.classList.remove('fire'); void bl.offsetWidth; bl.classList.add('fire'); }
+      if(e) e.classList.add('hit');
+      sfxShot();
+      screenShake();
+      setTimeout(()=>{ if(p) p.classList.remove('draw'); if(e) e.classList.remove('hit'); cb(); }, 260*speedMul);
+    }, 180*speedMul);
+  };
+  const mech = G.mech || {};
+  if(mech.aimInterrupt && Math.random()<0.5){
+    setTimeout(doAim, 260); // interrupted aim delay
+  } else {
+    doAim();
+  }
+}
+function opponentFalls(cb){
+  const e = $('#enemyCowboy');
+  if(e) e.classList.add('fall');
+  setTimeout(cb, S.settings.reducedMotion? 100 : 450);
+}
+function enemyShoots(cb){
+  const p = $('#playerCowboy'); const e = $('#enemyCowboy');
+  if(e) e.classList.add('draw');
+  sfxDraw();
+  setTimeout(()=>{
+    const muzzle = $('#enemyMuzzle'); if(muzzle){ muzzle.classList.remove('flash'); void muzzle.offsetWidth; muzzle.classList.add('flash'); }
+    if(p) p.classList.add('hit');
+    sfxShot();
+    screenShake();
+    setTimeout(()=>{ if(e) e.classList.remove('draw'); if(p) p.classList.remove('hit'); cb(); }, 300);
+  }, 260);
+}
+
+function afterOpponentDefeated(opp){
+  S.stats.defeated++;
+  G.score += opp.isBoss? 500 : 30;
+  if(opp.isBoss){
+    G.coinsEarned += 100;
+    S.stats.bossesDefeated++;
+  }
+  G.qIndex++;
+  G.bossIntroShownFor = false;
+  setTimeout(()=>{ nextOpponent(); }, 350);
+}
+
+function finishLevel(won){
+  stopTimer();
+  G.phase='result';
+  G.won = won;
+  const stage = STAGES[G.si];
+  let starLevel = 1;
+  if(won){
+    sfxLevelComplete();
+    S.coins += G.coinsEarned;
+    S.stats.totalScore += G.score;
+    const prevStatus = S.progress[G.si].levels[G.li];
+    const perfect = G.wrong===0 && G.lives===G.maxLives;
+    const status = perfect? 2 : 1;
+    S.progress[G.si].levels[G.li] = Math.max(prevStatus, status);
+    if(G.li===9){
+      // boss defeated -> unlock gun, unlock next stage
+      if(!S.guns.includes(stage.gun.id)) S.guns.push(stage.gun.id);
+      if(G.si+1 < STAGES.length) S.progress[G.si+1].unlocked = true;
+    }
+  } else {
+    sfxGameOver();
+    S.coins += Math.floor(G.coinsEarned*0.4);
+  }
+  persist();
+  if(won && G.li===9 && G.si===STAGES.length-1){ go('endgame'); return; }
+  go('results');
+}
+
+function renderGame(){
+  if(!G) return '<div class="empty-note">No level loaded.</div>';
+  if(!G.question || !G.queue || !G.queue.length){
+    return '<div class="title-hero"><h1>CalcBoyShooter</h1><p class="tagline">Facing your opponent...</p></div>';
+  }
+  const stage = STAGES[G.si];
+  const skin = skinById(S.equippedSkin);
+  const opp = currentOpponent();
+  const q = G.question;
+  const livesHtml = heartsHTML(G.lives, G.maxLives);
+  const queueDots = G.queue.map((o,i)=>{
+    let cls='queue-dot'; if(i<G.qIndex) cls+=' done'; else if(i===G.qIndex) cls+=' current'; if(o.isBoss) cls+=' boss';
+    return `<div class="${cls}">${o.isBoss? '💀' : (i+1)}</div>`;
+  }).join('');
+  const hpPips = opp.isBoss ? `<div class="hp-row">${Array.from({length:opp.maxHp}).map((_,i)=> `<div class="hp-pip ${i<opp.hp?'':'lost'}"></div>`).join('')}</div>` : '';
+  const playerGunId = S.equippedGun;
+  const enemyGunId = opp.isBoss ? stage.gun.id : 'bandit';
+
+  const answerUI = G.mech && G.mech.multipleChoice
+    ? `<div class="mc-grid" id="mcGrid">${(G.mcOptions||[]).map(o=>`<button class="mc-btn" data-mc="${o}">${fmt(o)}</button>`).join('')}</div>`
+    : `<div class="answer-row">
+         <input type="number" id="answerInput" step="any" placeholder="?" autofocus>
+         <button class="btn primary" id="submitAnswerBtn">DRAW!</button>
+       </div>`;
+
+  return `
+  <div id="gamewrap">
+    <div class="hud">
+      <div>
+        <button class="btn sm ghost" id="quitGameBtn" style="margin-bottom:6px;">✕ Quit</button>
+        <div class="lives">${livesHtml}</div>
+      </div>
+      <div class="center-hud">
+        <div class="stagelvl">${stage.name} · Level ${G.li+1}${G.li===9?' (BOSS)':''}</div>
+      </div>
+      <div class="right-hud">
+        <div class="hud-pill">💰 ${G.coinsEarned}</div>
+        <div class="streak-badge">🔥 ${G.streak}</div>
+      </div>
+    </div>
+    <div class="queue-strip">${queueDots}</div>
+    <div class="duel-stage">
+      <div class="cowboy left" id="playerCowboy" style="${cowboySVGVars(skin)}">
+        <div class="muzzle" id="playerMuzzle" style="left:70px;top:60px;"></div>
+        ${cowboyInner(playerGunId, S.accEquipped)}
+      </div>
+      <div class="bulletline" id="bulletLine" style="left:120px;width:calc(100% - 240px);"></div>
+      <div class="cowboy right" id="enemyCowboy" style="--hatcolor:${opp.color};--bodycolor:#2a2a2a;--legcolor:#161414;--accentcolor:#a3312a;--skintone:#c48a5a;--haircolor:#151010;">
+        ${hpPips}
+        <div class="enemy-tag">${opp.name}</div>
+        <div class="muzzle" id="enemyMuzzle" style="right:70px;top:60px;"></div>
+        ${cowboyInner(enemyGunId)}
+      </div>
+    </div>
+    <div class="qbox">
+      <div class="swap-flash" id="swapFlash">⚡ Question changed!</div>
+      <div class="qtext" id="qtext">${q.text}</div>
+      <div class="timerbar"><div id="timerFill" style="width:100%;background:var(--success);"></div></div>
+      <div style="font-size:12px;color:var(--ink-soft);margin-bottom:10px;" id="timerText">${G.timeMax.toFixed(1)}s</div>
+      ${answerUI}
+    </div>
+  </div>`;
+}
+
+function renderResults(){
+  const won = G.won;
+  const stage = STAGES[G.si];
+  const total = G.correct+G.wrong;
+  const acc = total>0? Math.round(G.correct/total*100) : 0;
+  const avgT = G.respTimes.length? (G.respTimes.reduce((a,b)=>a+b,0)/G.respTimes.length).toFixed(1) : '0.0';
+  const bossWon = won && G.li===9;
+  return `
+  <div class="wrap">
+    <div class="panel results-card">
+      <h2 style="text-align:center;">${won? (bossWon? 'BOSS DEFEATED' : 'LEVEL COMPLETE') : 'GAME OVER'}</h2>
+      ${bossWon? `<p style="text-align:center;font-weight:700;">YOU UNLOCKED: ${stage.gun.icon} ${stage.gun.name}</p><p style="text-align:center;font-size:13px;">${stage.gun.desc}</p>` : ''}
+      <div class="stat-line"><span>Score</span><b class="num">${G.score}</b></div>
+      <div class="stat-line"><span>Coins Earned</span><b class="num">💰 ${won? G.coinsEarned : Math.floor(G.coinsEarned*0.4)}</b></div>
+      <div class="stat-line"><span>Accuracy</span><b class="num">${acc}%</b></div>
+      <div class="stat-line"><span>Correct / Wrong</span><b class="num">${G.correct} / ${G.wrong}</b></div>
+      <div class="stat-line"><span>Avg. Answer Speed</span><b class="num">${avgT}s</b></div>
+      <div class="stat-line"><span>Best Streak</span><b class="num">🔥 ${Math.max(G.streak, 0)}</b></div>
+      <div class="stat-line"><span>Opponents Defeated</span><b class="num">${G.qIndex}</b></div>
+      <div class="stat-line"><span>Hearts Remaining</span><b class="num">${heartsHTML(won? G.lives : 0, G.maxLives)}</b></div>
+      ${!won? `<div class="stat-line"><span>Stage / Level Reached</span><b class="num">${G.si+1}-${G.li+1}</b></div>` : ''}
+      <div class="btn-row" style="margin-top:16px;">
+        ${won? (G.si<STAGES.length-1 || G.li<9 ? `<button class="btn primary" data-next-level="1">NEXT LEVEL</button>` : '') : ''}
+        <button class="btn" data-replay-level="1">REPLAY</button>
+        <button class="btn ghost" data-go="stages">Stage Select</button>
+        <button class="btn ghost" data-go="menu">Main Menu</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderEndgame(){
+  const st = S.stats;
+  return `
+  <div class="wrap">
+    <div class="title-hero" style="padding-top:2vh;"><h1 style="font-size:clamp(30px,7vw,54px);">LEGENDARY CALCBOY</h1></div>
+    <div class="panel results-card">
+      <h2 style="text-align:center;">Final Statistics</h2>
+      <div class="stat-line"><span>Total Score</span><b class="num">${st.totalScore}</b></div>
+      <div class="stat-line"><span>Total Coins</span><b class="num">💰 ${S.coins}</b></div>
+      <div class="stat-line"><span>Overall Accuracy</span><b class="num">${st.questions>0?Math.round(st.correct/st.questions*100):0}%</b></div>
+      <div class="stat-line"><span>Total Questions Answered</span><b class="num">${st.questions}</b></div>
+      <div class="stat-line"><span>Total Enemies Defeated</span><b class="num">${st.defeated}</b></div>
+      <div class="stat-line"><span>Bosses Defeated</span><b class="num">${st.bossesDefeated} / 10</b></div>
+      <div class="stat-line"><span>Longest Streak</span><b class="num">🔥 ${st.longestStreak}</b></div>
+      <div class="stat-line"><span>Guns Collected</span><b class="num">${S.guns.length} / 10</b></div>
+      <div class="btn-row" style="margin-top:16px;justify-content:center;">
+        ${GUNS.map(g=>`<span title="${g.name}" style="font-size:26px;opacity:${S.guns.includes(g.id)?1:0.25}">${g.icon}</span>`).join('')}
+      </div>
+      <p style="text-align:center;margin-top:14px;font-size:13px;">Challenge Mode unlocked — replay any stage with tougher timers and harder questions for bonus coins.</p>
+      <div class="btn-row" style="margin-top:10px;"><button class="btn primary" data-go="stages">Replay Stages</button><button class="btn ghost" data-go="menu">Main Menu</button></div>
+    </div>
+  </div>`;
+}
+
+/* ===================== EVENT BINDING ===================== */
+function bindEvents(){
+  document.querySelectorAll('.btn, .mc-btn, .level-node, .stage-card, .toggle').forEach(el=>{
+    el.addEventListener('click', ()=>{ if(!el.disabled) sfxClick(); });
+  });
+  document.querySelectorAll('[data-go]').forEach(b=>{
+    b.onclick = ()=>{
+      const target = b.dataset.go;
+      if(target==='playnext'){ const {si,li} = findNextLevel(); selectedStage=si; startLevel(si,li); return; }
+      go(target);
+    };
+  });
+  document.querySelectorAll('[data-stage]').forEach(b=>{
+    b.onclick = ()=>{ const i=parseInt(b.dataset.stage); if(!isStageUnlocked(i)) return; selectedStage=i; go('levels'); };
+  });
+  document.querySelectorAll('[data-level]').forEach(b=>{
+    b.onclick = ()=>{ const li=parseInt(b.dataset.level); startLevel(selectedStage, li); };
+  });
+  document.querySelectorAll('[data-equip-gun]').forEach(b=>{
+    b.onclick = ()=>{ S.equippedGun=b.dataset.equipGun; persist(); render(); };
+  });
+  document.querySelectorAll('[data-equip-skin]').forEach(b=>{
+    b.onclick = ()=>{ S.equippedSkin=b.dataset.equipSkin; persist(); render(); };
+  });
+  document.querySelectorAll('[data-buy-skin]').forEach(b=>{
+    b.onclick = ()=>{
+      const sk = skinById(b.dataset.buySkin);
+      if(S.coins>=sk.price && !S.skins.includes(sk.id)){
+        S.coins-=sk.price; S.skins.push(sk.id); S.equippedSkin=sk.id; persist(); render();
+      }
+    };
+  });
+  document.querySelectorAll('[data-equip-acc]').forEach(b=>{
+    b.onclick = ()=>{ S.accEquipped[b.dataset.accSlot] = b.dataset.equipAcc; persist(); render(); };
+  });
+  document.querySelectorAll('[data-buy-acc]').forEach(b=>{
+    b.onclick = ()=>{
+      const a = accById(b.dataset.buyAcc);
+      if(!a) return;
+      if(S.coins>=a.price && !S.accOwned.includes(a.id)){
+        S.coins-=a.price; S.accOwned.push(a.id); S.accEquipped[a.slot]=a.id; persist(); render();
+      }
+    };
+  });
+  document.querySelectorAll('[data-setting]').forEach(inp=>{
+    inp.oninput = ()=>{ S.settings[inp.dataset.setting] = parseInt(inp.value); updateAudioVolumes(); persist(); };
+  });
+  document.querySelectorAll('[data-toggle]').forEach(t=>{
+    t.onclick = ()=>{ const k=t.dataset.toggle; S.settings[k]=!S.settings[k]; persist(); render(); };
+  });
+  const quitBtn = $('#quitGameBtn');
+  if(quitBtn) quitBtn.onclick = confirmQuitToMenu;
+  const submitBtn = $('#submitAnswerBtn');
+  if(submitBtn) submitBtn.onclick = submitTypedAnswer;
+  const input = $('#answerInput');
+  if(input){
+    input.focus();
+    input.addEventListener('keydown', e=>{ if(e.key==='Enter') submitTypedAnswer(); });
+  }
+  document.querySelectorAll('[data-mc]').forEach(b=>{
+    b.onclick = ()=>{ handleAnswer(parseFloat(b.dataset.mc), false); };
+  });
+  const nextBtn = document.querySelector('[data-next-level]');
+  if(nextBtn) nextBtn.onclick = ()=>{
+    let si=G.si, li=G.li+1;
+    if(li>9){ si++; li=0; }
+    if(si>=STAGES.length){ go('stages'); return; }
+    selectedStage=si;
+    startLevel(si,li);
+  };
+  const replayBtn = document.querySelector('[data-replay-level]');
+  if(replayBtn) replayBtn.onclick = ()=>{ startLevel(G.si, G.li); };
+}
+
+/* ===================== BOOT ===================== */
+(async function boot(){
+  $('#screen').innerHTML = `<div class="title-hero"><h1>CalcBoyShooter</h1><p class="tagline">Saddling up...</p></div>`;
+  await loadSave();
+  go('menu');
+})();
+</script>
+</body>
+</html>
